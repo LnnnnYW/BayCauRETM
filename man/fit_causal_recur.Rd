@@ -68,15 +68,18 @@ fit_causal_recur(
 \item{verbose}{Logical. Print progress messages (default: TRUE).}
 }
 \value{
-A list with components:
+An object of class \code{causal_recur_fit}, a list with components:
 \describe{
-\item{stan_fit}{An rstan::stanfit object with posterior samples.}
+\item{stan_fit}{An \code{rstan::stanfit} object with posterior samples.}
 \item{data_preprocessed}{Processed data.frame with lagged columns.}
 \item{n_pat}{Number of unique subjects.}
-\item{design_info}{List with formula and covariate names.}
+\item{K}{Number of intervals.}
+\item{design_info}{List with formula and covariate names for submodels.}
 \item{prior}{Prior hyperparameters as supplied.}
 \item{stan_data_list}{List passed to Stan.}
 }
+This object has class \code{causal_recur_fit}, so methods \code{print()},
+\code{summary()}, and \code{plot()} are available.
 }
 \description{
 Fit a discrete-time Bayesian model for recurrent event counts and a terminal event (death),
@@ -97,12 +100,10 @@ df <- data.frame(
   A          = rbinom(4, 1, 0.5),
   X1         = rnorm(4)
 )
-
 prior <- list(
   eta_beta    = 0, sigma_beta  = 1, rho_beta   = 0.5,
   eta_gamma   = 0, sigma_gamma = 1, rho_gamma  = 0.5
 )
-
 \dontrun{
 fit <- fit_causal_recur(
   data       = df,
@@ -121,6 +122,8 @@ fit <- fit_causal_recur(
   iter       = 100
 )
 print(fit)
+summary(fit)
+plot(fit)
 }
 
 }

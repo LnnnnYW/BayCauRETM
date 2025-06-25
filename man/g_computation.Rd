@@ -7,72 +7,50 @@
 g_computation(fit_out, s_vec, B = 50)
 }
 \arguments{
-\item{fit_out}{Output list from \code{fit_causal_recur()}, containing
-at least \code{stan_fit}, \code{data_preprocessed}, \code{n_pat}, \code{K}.}
+\item{fit_out}{Output list from \code{\link{fit_causal_recur}}.}
 
-\item{s_vec}{Integer vector of treatment initiation intervals (from 1 to K).}
+\item{s_vec}{Integer vector of treatment-start intervals.}
 
-\item{B}{Integer. Number of Monte Carlo replicates per posterior draw (default: 50).}
+\item{B}{Number of Monte-Carlo replicates per draw (default 50).}
 }
 \value{
-A list with:
+An object of class \code{gcomp_out}, a list with components:
 \describe{
-\item{R_mat}{Matrix of dimension M × (length(s_vec)+1), where M is the number of posterior draws.
-Columns are mean rates under each treatment strategy.}
-\item{delta}{Named list of length \code{length(s_vec)}, each an element list with
-\code{draws}, \code{mean}, \code{CI_lower}, \code{CI_upper}.}
+\item{R_mat}{Numeric matrix of dimension M * (length(s_vec)+1), where M is the
+number of posterior draws. Columns are the weighted mean event rates under each
+treatment initiation strategy (including "never treat" as the last column).}
+\item{delta}{Named list of length \code{length(s_vec)}, each element is a list with:
+\code{draws} (numeric vector of contrasts), \code{mean}, \code{CI_lower}, \code{CI_upper}.}
 }
 }
 \description{
-Perform Bayesian g-computation to estimate average recurrent-event rates
-under different treatment initiation times versus never treating.
+Perform Bayesian g-computation to estimate average recurrent-event
+rates under different treatment initiation times versus never treating.
 }
 \details{
-For each posterior draw:
+For each posterior draw m:
 \enumerate{
-\item Sample Dirichlet weights for subjects.
-\item Simulate B replicate paths of (T_k, Y_k) conditional on treatment at s.
-\item Compute subject-level event rates and average with weights.
-\item Compute contrasts \eqn{\Delta(s,K+1)=R(s)-R(K+1)}.
+\item Draw Dirichlet weights across subjects.
+\item For each treatment start time s in \code{s_vec}, simulate B replicate paths
+of death and recurrent-event counts over intervals 1..K, conditional on starting
+treatment at s (or never treating for s = K+1).
+\item Compute subject-level average event rate (total events / time at risk) for each replicate,
+then average over replicates and weight by Dirichlet weights to obtain the mean rate R(s).
+\item Store R(s) for each s, and for "never treat" (s = K+1). Compute contrast delta(s) = R(s) − R(K+1).
 }
+The returned object has class \code{gcomp_out}. S3 methods \code{print}, \code{summary}, and \code{plot}
+are provided so that users can call \code{print(gcomp_out)}, \code{summary(gcomp_out)}, or \code{plot(gcomp_out, ...)}.
 }
 \examples{
 \dontrun{
-# Minimal reproducible workflow
-df <- data.frame(
-  patient_id = rep(1:2, each = 2),
-  k_idx      = rep(1:2, 2),
-  Y          = rpois(4, 1),
-  T          = rbinom(4, 1, 0.2),
-  C          = rbinom(4, 1, 0.05),
-  A          = rbinom(4, 1, 0.5)
-)
-prior <- list(
-  eta_beta    = 0, sigma_beta  = 1, rho_beta   = 0.5,
-  eta_gamma   = 0, sigma_gamma = 1, rho_gamma  = 0.5
-)
-fit <- fit_causal_recur(
-  data       = df,
-  K          = 2,
-  id_col     = "patient_id",
-  k_col      = "k_idx",
-  y_col      = "Y",
-  t_col      = "T",
-  c_col      = "C",
-  a_col      = "A",
-  x_cols     = NULL,
-  formula_T  = T_obs ~ Y_prev + A + k_idx,
-  formula_Y  = Y_obs ~ Y_prev + A + k_idx,
-  prior      = prior,
-  num_chains = 1,
-  iter       = 100
-)
-gcomp <- g_computation(
-  fit_out = fit,
-  s_vec   = 1:2,
-  B       = 10
-)
-print(gcomp)
+# Assuming 'fit' is the output of fit_causal_recur(...)
+gcomp_out <- g_computation(fit_out = fit, s_vec = 1:K, B = 20)
+print(gcomp_out)                # print summary table of delta(s)
+summary(gcomp_out)              # same as print
+plot(gcomp_out)                 # static ggplot of delta(s) vs s, with reference line at 0
+plot(gcomp_out, interactive = TRUE)  # interactive Plotly plot (requires plotly)
+plot(gcomp_out, save_file = "delta_plot.png")  # save static plot
+plot(gcomp_out, s_vec = 1:5, line_size = 1.2, ribbon_alpha = 0.2)
 }
 
 }

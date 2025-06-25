@@ -9,7 +9,7 @@ Author: Yuqin Wang [aut, cre],
 Maintainer: Yuqin Wang <yuqin_wang@brown.edu>
 Description: Implements the Bayesian framework of Oganisian et al. (2024) for causal inference with recurrent-event outcomes subject to a terminating event (e.g., death) and timing mis-alignment between eligibility and treatment initiation. Functions preprocess long-format data, fit a joint discrete-time hazard/count model in Stan with autoregressive priors, and apply g-computation to estimate marginal causal incidence-rate contrasts under hypothetical treatment-switching strategies. Utilities provide MCMC and positivity diagnostics, switching-probability summaries, effect curves, and publication-ready plots. Suitable for observational studies with right-censoring, time-varying confounding, and sparse late-follow-up intervals.
 License: GPL (>= 2)
-Depends: R (>= 4.3), cmdstanr (>= 0.5.3), coda, survival
+Depends: R (>= 4.3)
 Encoding: UTF-8
 Imports:
     rstan,
@@ -19,11 +19,16 @@ Imports:
     stats,
     magrittr,
     rlang,
-    methods
+    forcats,
+    gt,
+    knitr,
+    plotly,
+    tidyr,
+    writexl
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.2
 Suggests: 
-    testthat (>= 3.0.0)
+    testthat (>= 3.0.0), withr
 Config/testthat/edition: 3
 URL: https://github.com/LnnnnYW/BayCauRETM
 BugReports: https://github.com/LnnnnYW/BayCauRETM/issues

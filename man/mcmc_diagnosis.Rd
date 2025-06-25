@@ -9,40 +9,64 @@ mcmc_diagnosis(
   pars_to_check = c("beta0", "gamma0", "beta_Y", "beta_A", "gamma_Y", "gamma_A"),
   save_plots = FALSE,
   plot_prefix = "traceplot_",
-  positivity = TRUE
+  positivity = FALSE
 )
 }
 \arguments{
-\item{fit_out}{Output list from \code{fit_causal_recur()}, containing
-\code{stan_fit}.}
+\item{fit_out}{Output list from \code{fit_causal_recur()}, containing at least
+\code{stan_fit} (an RStan stanfit object) and \code{data_preprocessed} if
+\code{positivity = TRUE}.}
 
-\item{pars_to_check}{Character vector of parameter names to diagnose (default:
-\code{c("beta0","gamma0","beta_Y","beta_A","gamma_Y","gamma_A")}).}
+\item{pars_to_check}{Character vector of parameter name patterns to diagnose
+(default: \code{c("beta0","gamma0","beta_Y","beta_A","gamma_Y","gamma_A")}).
+These are passed as regex to \code{bayesplot::mcmc_trace}.}
 
-\item{save_plots}{Logical; if \code{TRUE}, saves each traceplot as a PNG file.}
+\item{save_plots}{Logical; if \code{TRUE}, saves each traceplot as a PNG file
+with prefix \code{plot_prefix}. Default FALSE.}
 
 \item{plot_prefix}{Filename prefix for saved plots (default: \code{"traceplot_"}).}
 
-\item{positivity}{Logical; if \code{TRUE}, perform additional positivity (overlap) diagnostics on the treatment assignment (default: \code{FALSE}).}
+\item{positivity}{Logical; if \code{TRUE}, perform additional positivity
+diagnostics on treatment assignment (default: \code{FALSE}).}
 }
 \value{
-Invisibly returns \code{NULL}. Side effects: prints summary and creates plots.
+An object of class \code{mcmc_diag}, a list with components:
+\describe{
+\item{\code{stats}}{Data.frame with columns \code{Parameter}, \code{n_eff}, and \code{Rhat}.}
+\item{\code{plots}}{Named list of ggplot objects for traceplots, names are the parameter patterns.}
+}
+Use \code{print()}, \code{summary()}, or \code{plot()} on the returned object to inspect results.
 }
 \description{
-Print R-hat and effective sample size, generate traceplots, and
-optionally check positivity of the treatment mechanism.
+Summarize MCMC convergence for a fitted model (R-hat and effective sample size),
+generate traceplots for specified parameters, and optionally perform positivity
+(overlap) diagnostics on treatment assignment.
 }
 \details{
-Summarizes MCMC convergence using R-hat and effective sample size.
-Generates traceplots for specified parameters. Optionally, traceplots
-are saved as PNG files in the working directory, with filenames
-beginning with \code{plot_prefix}. If \code{positivity = TRUE}, the function will also check for lack of overlap in the propensity model.
+This function:
+\enumerate{
+\item Computes R-hat and effective sample size for specified parameters via \code{rstan::summary()}.
+\item Generates traceplots for each parameter pattern using \code{bayesplot::mcmc_trace()}.
+\item If \code{positivity = TRUE}, fits a logistic regression of treatment on history/covariates
+from \code{fit_out$data_preprocessed}, prints propensity score range and percentiles,
+and plots a histogram of propensity scores.
+}
+The returned object has class \code{mcmc_diag}, so users can call
+\code{print()}, \code{summary()}, or \code{plot()} directly.
 }
 \examples{
 \dontrun{
-# Example assumes fit_causal_recur() has been run:
 fit_out <- fit_causal_recur(...)
-mcmc_diagnosis(fit_out, pars_to_check = c("beta_Y", "beta_A"))
+diag <- mcmc_diagnosis(
+  fit_out       = fit_out,
+  pars_to_check = c("beta_Y", "beta_A"),
+  save_plots    = FALSE,
+  positivity    = FALSE
+)
+print(diag)        # prints R-hat and n_eff table
+summary(diag)      # same as print
+plot(diag)         # shows all traceplots
+plot(diag, pars = "beta_Y")  # show traceplot(s) matching "beta_Y"
 }
 
 }

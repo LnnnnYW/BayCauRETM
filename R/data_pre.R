@@ -1,8 +1,8 @@
-# 全局变量声明放在文件最开头（只需一次）
 utils::globalVariables(c(
   "Y_prev", "A", "s", "Mean", "CI_low", "CI_high",
   "pat_orig", "k_idx", "pat_id", "T_obs", "C_obs",
-  "Y_obs", "n", "hazard", "surv_prob", "switch_prob"
+  "Y_obs", "T_prev", "C_prev", "n", "hazard", "surv_prob",
+  "switch_prob", ".data", "scenario", "lower", "upper"
 ))
 
 #' Preprocess Long-Format Data for Causal Recurrent-Event Modeling
@@ -65,7 +65,11 @@ utils::globalVariables(c(
 #' @importFrom magrittr %>%
 #' @importFrom rlang sym
 #' @importFrom dplyr rename arrange mutate group_by ungroup count filter anti_join
+#' @importFrom tidyr complete
+#' @importFrom forcats fct_lump
 #' @export
+
+
 preprocess_data <- function(df,
                             id_col,
                             k_col,
@@ -109,9 +113,20 @@ preprocess_data <- function(df,
       Y_prev = dplyr::lag(Y_obs, default = 0)
     ) %>%
     dplyr::ungroup()
-
+  df2 <- df2 %>%
+    dplyr::mutate(
+      Y_prev = ifelse(is.na(Y_prev), 0, Y_prev),
+      T_prev = ifelse(is.na(T_prev), 0, T_prev),
+      C_prev = ifelse(is.na(C_prev), 0, C_prev)
+    )
   # Replace NA in Y_obs with zero
-  df2$Y_obs[is.na(df2$Y_obs)] <- 0
+  df2 <- df2 %>%
+        group_by(pat_id) %>%
+        tidyr::complete(
+            k_idx = 1:K,
+            fill = list(Y_obs = 0, T_obs = 0, C_obs = 0, A = 0)
+          ) %>%
+        ungroup()
 
   # Check existence of additional covariates
   if (!is.null(x_cols)) {
@@ -132,12 +147,6 @@ preprocess_data <- function(df,
     stop("Duplicate rows for some (pat_id, k_idx).")
   }
 
-  # Warn if missing intervals
-  all_combos <- expand.grid(pat_id = unique(df2$pat_id), k_idx = 1:K)
-  miss <- dplyr::anti_join(all_combos, df2, by = c("pat_id", "k_idx"))
-  if (nrow(miss) > 0) {
-    warning(nrow(miss), " intervals missing across subjects.")
-  }
 
   # Check coding of A, T_obs, C_obs
   if (!is.numeric(df2$A)) stop("A must be numeric 0/1.")
