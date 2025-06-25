@@ -1,4 +1,4 @@
-# File: R/result_summary_table.R
+# R/result_summary_table
 
 #' Summarise posterior parameters & g-computation contrasts
 #'
