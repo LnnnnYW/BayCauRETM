@@ -1,8 +1,8 @@
-# inst/demo/demo_full.R
+# inst/demo/demo_code.R
 library(BayCauRETM)
 set.seed(42)
 
-# 1) data setting
+# 1) Data-generating
 N <- 150          # subjects
 K <- 4            # intervals
 beta_A  <- -0.5   # A -> death   (logit)
@@ -30,16 +30,22 @@ sim_df <- do.call(
 
         ## recurrent events
         mu_k <- exp(log(1) + 0.3 * Y_prev + gamma_A * A_k)
-        Y_k <- rpois(1, mu_k)
+        Y_k  <- rpois(1, mu_k)
       } else {          # after death: structural values
-        T_k <- 1;  Y_k <- NA
+        T_k <- 1
+        Y_k <- 0        # use 0 (not NA) to satisfy preprocess_data checks
       }
 
-      rows[[k]] <- data.frame(id = i, k = k, Y = Y_k,
-                              T = T_k, C = 0, A = A_k)
+      rows[[k]] <- data.frame(
+        pat_id = i,
+        k_idx  = k,
+        Y_obs  = Y_k,
+        T_obs  = T_k,
+        A      = A_k
+      )
 
       alive  <- (T_k == 0)
-      Y_prev <- ifelse(is.na(Y_k), Y_prev, Y_k)
+      Y_prev <- Y_k
     }
 
     do.call(rbind, rows)
@@ -57,17 +63,10 @@ prior_default <- list(
 
 iter_demo   <- 1000
 chains_demo <- 1
-thin_demo   <- 2
 
 fit <- fit_causal_recur(
   data            = sim_df,
   K               = K,
-  id_col          = "id",
-  k_col           = "k",
-  y_col           = "Y",
-  t_col           = "T",
-  c_col           = "C",
-  a_col           = "A",
   formula_T       = T_obs ~ Y_prev + A + k_idx,
   formula_Y       = Y_obs ~ Y_prev + A + k_idx,
   prior           = prior_default,
@@ -77,13 +76,12 @@ fit <- fit_causal_recur(
   verbose         = FALSE
 )
 
-
-## 3) MCMC Diagnosis
+# 3) MCMC Diagnosis
 diag <- mcmc_diagnosis(fit)
-print(diag)            # R-hat / ESS table
-plot(diag)             # trace plot + density
+print(diag)     # R-hat / ESS table
+plot(diag)      # trace plots
 
-## 4) g-computation
+# 4) g-computation
 gcomp <- g_computation(fit, s_vec = 1:K, B = 50)
 print(gcomp)
 plot(gcomp, ref_line = 0)
@@ -92,7 +90,7 @@ if (requireNamespace("plotly", quietly = TRUE)) {
   plot(gcomp, interactive = TRUE)
 }
 
-## 5) PS Diagnosis
+# 5) Propensity-score diagnostics
 ps_diag <- propensity_score_diagnostics(
   data       = fit$data_preprocessed,
   treat_col  = "A",
@@ -100,11 +98,11 @@ ps_diag <- propensity_score_diagnostics(
 )
 plot(ps_diag)
 
-## 6) Switching Diagnosis
+# 6) Switching-probability diagnostics
 sw_diag <- switching_probability_summary(fit$data_preprocessed)
 plot(sw_diag)
 
-## 7) Summary
+# 7) Summary table
 sum_tbl <- result_summary_table(
   fit_out   = fit,
   gcomp_out = gcomp,
@@ -112,3 +110,4 @@ sum_tbl <- result_summary_table(
   format    = "kable"
 )
 print(sum_tbl)
+

@@ -2,9 +2,18 @@
 % Please edit documentation in R/switching_probability_summary.R
 \name{switching_probability_summary}
 \alias{switching_probability_summary}
+\alias{print.switching_summary}
+\alias{summary.switching_summary}
+\alias{plot.switching_summary}
 \title{Compute Switching Probability Summary}
 \usage{
 switching_probability_summary(df, covariates = NULL)
+
+\method{print}{switching_summary}(x, ...)
+
+\method{summary}{switching_summary}(object, ...)
+
+\method{plot}{switching_summary}(x, show_mean = TRUE, theme_fn = ggplot2::theme_minimal, ...)
 }
 \arguments{
 \item{df}{A data.frame from \code{preprocess_data()}, containing at least:
@@ -12,6 +21,16 @@ switching_probability_summary(df, covariates = NULL)
 
 \item{covariates}{Character vector of covariate names to include in the hazard model,
 or NULL for only \code{Y_prev} and \code{k_idx}.}
+
+\item{x}{an object used to select a method.}
+
+\item{...}{Passed to \code{ggplot2::geom_boxplot()}.}
+
+\item{object}{Object returned by this function (used by summary method).}
+
+\item{show_mean}{Logical. Whether to overlay the mean curve (default: TRUE).}
+
+\item{theme_fn}{A ggplot2 theme function.}
 }
 \value{
 An object of class \code{switching_summary}, which is a list with components:
@@ -35,9 +54,17 @@ at each discrete interval, then computes for each subject the survival probabili
 (not yet switched) and the switching probability at each interval. It returns
 the augmented data.frame and a summary by interval.
 }
+\section{Functions}{
+\itemize{
+\item \code{print(switching_summary)}: Print the summary table of switching probabilities by interval.
+
+\item \code{summary(switching_summary)}: Alias for print.
+
+\item \code{plot(switching_summary)}: Plot switching probability over time.
+
+}}
 \examples{
 \dontrun{
-# Suppose processed_df is the output of preprocess_data()
 sw <- switching_probability_summary(processed_df, covariates = c("age", "sex"))
 print(sw)       # prints summary_df
 summary(sw)     # same as print

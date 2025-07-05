@@ -4,81 +4,47 @@
 \alias{preprocess_data}
 \title{Preprocess Long-Format Data for Causal Recurrent-Event Modeling}
 \usage{
-preprocess_data(
-  df,
-  id_col,
-  k_col,
-  y_col,
-  t_col,
-  c_col,
-  a_col,
-  x_cols = NULL,
-  K
-)
+preprocess_data(df, K, x_cols = NULL)
 }
 \arguments{
-\item{df}{A data.frame in long format, one row per subject and interval.}
-
-\item{id_col}{Character. Name of the column identifying subjects.}
-
-\item{k_col}{Character. Name of the interval index column (should be integers from 1 to K).}
-
-\item{y_col}{Character. Name of the column containing recurrent-event counts.}
-
-\item{t_col}{Character. Name of the terminal-event (death) indicator column (0/1).}
-
-\item{c_col}{Character. Name of the censoring indicator column (0/1).}
-
-\item{a_col}{Character. Name of the treatment indicator column (0/1 or factor).}
-
-\item{x_cols}{Character vector of additional covariate column names, or NULL.}
+\item{df}{A \emph{long-format} \code{data.frame} that \strong{already contains} the analysis
+columns \code{pat_id}, \code{k_idx}, \code{Y_obs}, \code{T_obs}, \code{A}, plus any additional
+covariates.}
 
 \item{K}{Integer. Total number of discrete intervals per subject.}
+
+\item{x_cols}{Character vector of additional covariate column names, or \code{NULL}.}
 }
 \value{
 A list with components:
-\describe{
-\item{processed_df}{A data.frame with columns \code{pat_id}, \code{k_idx}, \code{Y_obs}, \code{T_obs}, \code{C_obs}, \code{A}, lagged values \code{Y_prev}, \code{T_prev}, \code{C_prev}, and any \code{x_cols}.}
-\item{n_pat}{Integer. Number of unique subjects.}
+\itemize{
+\item \strong{processed_df} - The input data with added lagged variables \code{Y_prev},
+\code{T_prev}, and filled-in intervals.
+\item \strong{n_pat} - Integer, number of unique subjects.
 }
 }
 \description{
-Prepares a long-format dataset for discrete-time Bayesian causal modeling
-of recurrent and terminal events.
+Prepares a long-format dataset (already using standardized column names) for
+discrete-time Bayesian causal modeling of recurrent and terminal events.
 }
 \details{
-This function:
-\enumerate{
-\item Renames columns to standardized names.
-\item Converts subject IDs to integer \code{pat_id}.
-\item Computes lagged variables (\code{Y_prev}, \code{T_prev}, \code{C_prev}).
-\item Replaces missing values in \code{Y_obs} with zero.
-\item Checks covariate existence, value ranges, duplicates, missing intervals, and binary coding.
-}
+The data \strong{must already follow} the naming convention
+\verb{*_obs} for observed quantities and \verb{*_prev} for their lagged counterparts.
+The function therefore \emph{does not} rename columns.  Its only tasks are to
+fill in missing intervals, create lagged variables, run basic validity
+checks, and return the results.
 }
 \examples{
 df_long <- data.frame(
-  patient_id = rep(1:5, each = 3),
-  k_idx      = rep(1:3, times = 5),
-  Y          = sample(0:2, 15, TRUE),
-  T          = rbinom(15, 1, 0.1),
-  C          = rbinom(15, 1, 0.05),
-  A          = rbinom(15, 1, 0.5),
-  age        = rnorm(15, 60, 10),
-  sex        = sample(c("M","F"), 15, TRUE)
+  pat_id = rep(1:5, each = 3),
+  k_idx  = rep(1:3, times = 5),
+  Y_obs  = sample(0:2, 15, TRUE),
+  T_obs  = rbinom(15, 1, 0.1),
+  A      = rbinom(15, 1, 0.5),
+  age    = rnorm(15, 60, 10)
 )
 \dontrun{
-out <- preprocess_data(
-  df     = df_long,
-  id_col = "patient_id",
-  k_col  = "k_idx",
-  y_col  = "Y",
-  t_col  = "T",
-  c_col  = "C",
-  a_col  = "A",
-  x_cols = c("age", "sex"),
-  K      = 3
-)
+out <- preprocess_data(df_long, K = 3, x_cols = "age")
 str(out)
 }
 

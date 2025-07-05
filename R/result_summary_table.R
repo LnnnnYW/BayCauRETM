@@ -19,6 +19,8 @@
 #' @param sort_desc Logical; descending sort?
 #' @param format    `"data.frame"`, `"kable"`, or `"gt"`.
 #' @param export_file Optional path; if given, writes CSV / XLSX export.
+#' @param object Object returned by this function (used by summary method).
+#' @inheritParams base::print
 #' @return A **result_summary_table** object (see `print()` method).
 #'
 #' @seealso [print.result_summary_table()], [g_computation()],
@@ -38,6 +40,7 @@
 #' @importFrom gt gt tab_header
 #' @importFrom writexl write_xlsx
 #' @importFrom utils write.csv
+#' @importFrom rlang enquo
 #' @export
 
 
@@ -150,11 +153,12 @@ result_summary_table <- function(fit_out,
   invisible(out)
 }
 
-#' @title Print a result_summary_table
-#' @description Formatted console/knitr/gt output of the two summary tables.
-#' @param x A **result_summary_table** object.
-#' @param ... Ignored.
-#' @return *x*, invisibly.
+#' @describeIn result_summary_table Formatted console/knitr/gt output of the two summary tables.
+#' @param object A \code{result_summary_table} object (output of
+#'   \code{result_summary_table()}).
+#' @param ...    Ignored; present for S3 consistency.
+#'
+#' @return \code{object}, invisibly.
 #' @method print result_summary_table
 #' @export
 print.result_summary_table <- function(x, ...) {
@@ -176,17 +180,10 @@ print.result_summary_table <- function(x, ...) {
   invisible(x)
 }
 
-#' @title Summary for result_summary_table
-#' @description Alias for [print.result_summary_table()].
-#' @inheritParams print.result_summary_table
-#' @param object A \code{result_summary_table} object.
-#' @return *object*, invisibly.
+#' @describeIn result_summary_table Alias for print.
 #' @method summary result_summary_table
 #' @export
 summary.result_summary_table <- function(object, ...) {
   print(object)
   invisible(object)
 }
-
-
-

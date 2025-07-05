@@ -157,7 +157,7 @@ propensity_score_diagnostics <- function(data,
     plots$density <- p_den
   }
 
-  # Output -------------------------------------------------------------------
+  # Output
   out <- list(
     model     = mod_ps,
     ps        = ps_vec,
