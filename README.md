@@ -1,29 +1,52 @@
+BayCauRETM
+================
 
-<!-- README.md is generated from README.Rmd. Please edit that file -->
-
-# BayCauRETM
-
-<!-- badges: start -->
-
-[![R-CMD-check](https://github.com/LnnnnYW/BayCauRETM/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/LnnnnYW/BayCauRETM/actions/workflows/R-CMD-check.yaml)
-<!-- badges: end -->
+[![R-CMD-check](https://github.com/LnnnnYW/BayCauRETM/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/LnnnnYW/BayCauRETM/actions/workflows/R-CMD-check.yaml)  
+![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)
 
 **BayCauRETM** (Bayesian Causal Recurrent-Event and Terminal-Event
-Modeling) provides a full Bayesian workflow for discrete-time causal
-inference with recurrent events jointly modeled with a terminal event.
-It handles canonical data preprocessing, Stan-based joint modelling,
-posterior *g*-computation for alternative treatment start times, rich
-diagnostics, and publication-ready summaries.
+Modeling)  
+provides a *fully Bayesian* workflow for **discrete-time causal
+inference**  
+with recurrent-event counts jointly modeled with a terminal event.
+
+- Canonical long-format preprocessing with automated lags  
+- Stan-based joint modeling (`fit_causal_recur()`) with gAR(1) priors  
+- Posterior *g*-computation for alternative treatment-start strategies  
+- Diagnostics: MCMC convergence, propensity-score, switching-hazard  
+- Publication-ready tables & plots
 
 ## Installation
 
-You can install the development version of BayCauRETM from
-[GitHub](https://github.com/) with:
-
 ``` r
+# Install development version from GitHub
 # install.packages("pak")
 pak::pak("LnnnnYW/BayCauRETM")
+
+# Or with devtools:
+# devtools::install_github("LnnnnYW/BayCauRETM")
 ```
+
+## Dependencies
+
+The following R packages are required for `BayCauRETM`:
+
+- [rstan](https://cran.r-project.org/package=rstan)
+- [dplyr](https://cran.r-project.org/package=dplyr)
+- [ggplot2](https://cran.r-project.org/package=ggplot2)
+- [bayesplot](https://cran.r-project.org/package=bayesplot)
+- [stats](https://stat.ethz.ch/R-manual/R-devel/library/stats/html/00Index.html)
+  *(base package)*
+- [magrittr](https://cran.r-project.org/package=magrittr)
+- [rlang](https://cran.r-project.org/package=rlang)
+- [gt](https://cran.r-project.org/package=gt)
+- [knitr](https://cran.r-project.org/package=knitr)
+- [plotly](https://cran.r-project.org/package=plotly)
+- [tidyr](https://cran.r-project.org/package=tidyr)
+- [writexl](https://cran.r-project.org/package=writexl)
+
+These are listed in the `Imports` field of the `DESCRIPTION` file and
+will be installed automatically with the package.
 
 ## Example
 
@@ -83,26 +106,29 @@ tbl <- result_summary_table(fit, gout, s_vec = 1:3, format = "kable")
 print(tbl)
 ```
 
-### Why keep this file as **README.Rmd**?
+## Documentation & Demos
 
-Because an R Markdown-based README lets us run real R code every time we
-knit, so the examples and figures always reflect the **current** version
-of *BayCauRETM*.
+- Full demo: `inst/demo/demo_full.R`
+- Help pages for each function:  
+  `?preprocess_data`, `?fit_causal_recur`, `?g_computation`, etc.
 
-``` r
-summary(fit)
-```
+## Reporting Issues
 
-You’ll still need to render `README.Rmd` regularly, to keep `README.md`
-up-to-date. `devtools::build_readme()` is handy for this.
+If you encounter bugs or have feature suggestions, please  
+open an [issue on
+GitHub](https://github.com/LnnnnYW/BayCauRETM/issues).  
+Pull requests are always welcome!
 
-You can also embed plots, for example:
+## Citation
 
-``` r
-# posterior contrast delta(s, K+1) with 95 % credible ribbon
-plot(gout, ref_line = 0)
-```
+If you use **BayCauRETM**, please cite:
 
-Knit with **Build ▸ Build README** or `devtools::build_readme()`
-whenever you change the code, and commit the PNG files under
-`man/figures/`.
+## Contact
+
+The corresponding package author are Yuqin Wang (email:
+<yuqin_wang@brown.edu>) and Arman Oganisian (email:
+<arman_oganisian@brown.edu>).
+
+> Tip: For reproducibility, knit this README from a `README.Rmd`
+> source  
+> using `devtools::build_readme()`.
