@@ -21,7 +21,6 @@ data {
   int<lower=1,upper=K>   k_idx[N];
 
   int<lower=0,upper=1> T_prev[N];
-  int<lower=0,upper=1> C_prev[N];
   int<lower=0,upper=1> A[N];
 
   matrix[N,p_T] X_T;
@@ -55,26 +54,37 @@ model {
   beta0[1] ~ normal(eta_beta, sigma_beta);
   for (k in 2:K)
     beta0[k] ~ normal(eta_beta + rho_beta * (beta0[k-1] - eta_beta), sigma_beta);
+
   gamma0[1] ~ normal(eta_gamma, sigma_gamma);
   for (k in 2:K)
     gamma0[k] ~ normal(eta_gamma + rho_gamma * (gamma0[k-1] - eta_gamma), sigma_gamma);
 
   // weakly informative priors
-  beta_X ~ normal(0,1);
-  beta_Y ~ normal(0,1);
-  beta_A ~ normal(0,1);
-  gamma_X ~ normal(0,1);
-  gamma_Y ~ normal(0,1);
-  gamma_A ~ normal(0,1);
+  beta_X ~ normal(0, 1);
+  beta_Y ~ normal(0, 1);
+  beta_A ~ normal(0, 1);
+  gamma_X ~ normal(0, 1);
+  gamma_Y ~ normal(0, 1);
+  gamma_A ~ normal(0, 1);
 
   // likelihood
   for (n in 1:N) {
-    real lp = beta0[k_idx[n]] + X_T[n] * beta_X + beta_Y * Y_prev[n] + beta_A * A[n];
-    if (T_prev[n]==0 && C_prev[n]==0) {
+    real lp = beta0[k_idx[n]]
+              + X_T[n] * beta_X
+              + beta_Y * Y_prev[n]
+              + beta_A * A[n];
+
+    if (T_prev[n] == 0) {                 // subject still alive at start of interval
       T_obs[n] ~ bernoulli_logit(lp);
-      if (T_obs[n]==0) {
-        Y_obs[n] ~ poisson_log(gamma0[k_idx[n]] + X_Y[n] * gamma_X + gamma_Y * Y_prev[n] + gamma_A * A[n]);
+
+      if (T_obs[n] == 0) {                // if not dead, model recurrent events
+        Y_obs[n] ~ poisson_log(
+          gamma0[k_idx[n]]
+          + X_Y[n] * gamma_X
+          + gamma_Y * Y_prev[n]
+          + gamma_A * A[n]);
       }
     }
   }
 }
+
