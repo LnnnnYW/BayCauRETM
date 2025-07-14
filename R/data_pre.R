@@ -44,7 +44,8 @@ utils::globalVariables(c(
 #' @importFrom magrittr %>%
 #' @importFrom dplyr arrange mutate group_by ungroup count filter select all_of
 #' @importFrom tidyr complete
-#' @export
+#' @keywords internal
+#' @noRd
 
 
 preprocess_data <- function(df,

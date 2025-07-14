@@ -84,51 +84,99 @@ fit_causal_recur <- function(data,
                              num_chains = 4,
                              iter = 2000,
                              stan_model_file = NULL,
-                             control = list(adapt_delta = 0.95, max_treedepth = 15),
+                             control = list(adapt_delta = 0.95,
+                                            max_treedepth = 15),
                              verbose = TRUE) {
-  # Preprocess (fills missing intervals + lagged vars, no renaming)
-  prep <- preprocess_data(df = data, K = K, x_cols = x_cols)
+
+  df <- data
+
+  # 1) Identify the user’s event and count columns from the left-hand sides of the formulas
+  event_col <- all.vars(formula_T)[1]   # e.g. "death"
+  count_col <- all.vars(formula_Y)[1]   # e.g. "num_evt"
+
+  # Copy into the internal standard names T_obs and Y_obs
+  df$T_obs <- df[[event_col]]
+  df$Y_obs <- df[[count_col]]
+
+  # 2) Find the set of covariates that appear on the right-hand sides of both formulas
+  rhs_T      <- setdiff(all.vars(update(formula_T, 0 ~ .)), event_col)
+  rhs_Y      <- setdiff(all.vars(update(formula_Y, 0 ~ .)), count_col)
+  common_rhs <- intersect(rhs_T, rhs_Y)
+
+  # 3) Automatically detect the treatment variable A:
+  if ("A" %in% names(df)) {
+    # use df$A as is
+  } else if (length(common_rhs) == 1) {
+    df$A <- df[[common_rhs]]
+    message("Auto‐detected treatment column: ", common_rhs, "A")
+    common_rhs <- setdiff(common_rhs, common_rhs)
+  } else {
+    stop("Could not uniquely identify treatment column; please supply a column named 'A'.")
+  }
+
+  # 4) Automatically detect the time index k_idx:
+  if (!"k_idx" %in% names(df) && length(common_rhs) == 1) {
+    df$k_idx <- df[[common_rhs]]
+    message("Auto‐detected time index: ", common_rhs, "k_idx")
+    common_rhs <- setdiff(common_rhs, common_rhs)
+  } else if (!"k_idx" %in% names(df)) {
+    stop("Could not uniquely identify time index; please supply a column named 'k_idx'.")
+  }
+
+  # 5) Automatically detect the subject ID pat_id:
+  used_cols <- c(event_col, count_col, "A", "k_idx", x_cols)
+  extras    <- setdiff(names(df), c(used_cols, "T_obs", "Y_obs"))
+  if (!"pat_id" %in% names(df) && length(extras) == 1) {
+    df$pat_id <- df[[extras]]
+    message("Auto‐detected subject ID: ", extras, "pat_id")
+  } else if (!"pat_id" %in% names(df)) {
+    stop("Could not uniquely identify subject ID; please supply a column named 'pat_id'.")
+  }
+
+  # 6) Drop any other columns that are not T_obs, Y_obs, A, k_idx, pat_id, or x_cols
+  keep_cols <- c("pat_id", "k_idx", "T_obs", "Y_obs", "A", x_cols)
+  df <- df[, keep_cols, drop = FALSE]
+
+  #  Preprocess
+  prep <- preprocess_data(df = df, K = K, x_cols = x_cols)
   df   <- prep$processed_df
   n_pat <- prep$n_pat
   N     <- nrow(df)
 
-  df <- df %>% mutate(Y_prev = as.numeric(Y_prev),
-                      A      = as.numeric(A))
+  # Copy back to user column names for model.matrix()
+  df[[event_col]] <- df$T_obs
+  df[[count_col]] <- df$Y_obs
 
-  X_T_mat <- model.matrix(formula_T, data = df)
-  X_Y_mat <- model.matrix(formula_Y, data = df)
+  # Design matrices
+  df <- df %>%
+    dplyr::mutate(Y_prev = as.numeric(Y_prev),
+                  A      = as.numeric(A))
 
   drop_int <- function(mat) {
     if ("(Intercept)" %in% colnames(mat))
       mat[, setdiff(colnames(mat), "(Intercept)"), drop = FALSE]
-    else
-      mat
+    else mat
   }
-  X_T <- drop_int(X_T_mat)
-  X_Y <- drop_int(X_Y_mat)
-
-  p_T <- ncol(X_T)
-  p_Y <- ncol(X_Y)
+  X_T <- drop_int(model.matrix(formula_T, data = df))
+  X_Y <- drop_int(model.matrix(formula_Y, data = df))
+  p_T <- ncol(X_T); p_Y <- ncol(X_Y)
 
   design_info <- list(
-    formula_T       = formula_T,
-    formula_Y       = formula_Y,
+    formula_T = formula_T,
+    formula_Y = formula_Y,
     covariate_names_T = colnames(X_T),
     covariate_names_Y = colnames(X_Y)
   )
 
-  # Stan model
+  # Stan model & sampling
   if (is.null(stan_model_file)) {
     pkg_dir <- system.file(package = "BayCauRETM")
-    stan_model_file <- file.path(pkg_dir, "stan", "causal_recur_model.stan")
-    if (!file.exists(stan_model_file)) {
-      stop("Cannot find inst/stan/causal_recur_model.stan in package BayCauRETM")
-    }
+    stan_model_file <- file.path(pkg_dir, "stan",
+                                 "causal_recur_model.stan")
   }
-  if (verbose) message("Compiling Stan model (this may take a moment)...")
+  if (verbose) message("Compiling Stan model...")
   stan_mod <- rstan::stan_model(file = stan_model_file, verbose = FALSE)
 
-  # Data list for Stan
   stan_data <- list(
     N       = N,
     n_pat   = n_pat,
@@ -152,10 +200,9 @@ fit_causal_recur <- function(data,
     rho_gamma   = prior$rho_gamma
   )
 
-  # MCMC sampling
   if (verbose)
-    message(sprintf("Starting MCMC sampling (chains = %d, iter = %d)...", num_chains, iter))
-
+    message(sprintf("Sampling (%d chains × %d iter)...",
+                    num_chains, iter))
   stan_fit <- rstan::sampling(
     object   = stan_mod,
     data     = stan_data,
@@ -165,7 +212,6 @@ fit_causal_recur <- function(data,
     control  = control
   )
 
-  # Return
   structure(
     list(
       stan_fit          = stan_fit,
@@ -179,6 +225,7 @@ fit_causal_recur <- function(data,
     class = "causal_recur_fit"
   )
 }
+
 
 
 # print / summary / plot methods

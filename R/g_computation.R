@@ -52,154 +52,161 @@
 #' @importFrom utils write.csv
 #' @export
 
-
 g_computation <- function(fit_out, s_vec, B = 50) {
-  # Validate input
-  if (is.null(fit_out$stan_fit)) stop("stan_fit is missing in fit_out")
-  if (!inherits(fit_out$stan_fit, "stanfit")) stop("stan_fit must be an RStan stanfit object")
+  if (!inherits(fit_out$stan_fit, "stanfit"))
+    stop("fit_out$stan_fit must be a 'stanfit' object")
+
   df    <- fit_out$data_preprocessed
   n_pat <- fit_out$n_pat
   K     <- fit_out$K
 
-  # 1) Extract posterior draws
+  # Posterior draws
   post <- rstan::extract(
     fit_out$stan_fit,
     pars = c("beta0", "gamma0", "beta_X", "beta_Y", "beta_A",
              "gamma_X", "gamma_Y", "gamma_A"),
     permuted = TRUE
   )
-  M <- length(post$beta_Y)
+  M <- length(post$beta_Y)                 # number of posterior iterations
 
-  # 2) Dirichlet weights for each draw
+  # Dirichlet weights
   W      <- matrix(stats::rgamma(M * n_pat, shape = 10, rate = 10),
                    nrow = M, ncol = n_pat)
   pi_mat <- W / rowSums(W)
 
-  # 3) Baseline covariates at k = 1
-  mat_cov        <- stats::model.matrix(fit_out$design_info$formula_T, data = df)
-  X_cov          <- mat_cov[, colnames(mat_cov) != "(Intercept)", drop = FALSE]
-  idx_baseline   <- which(df$k_idx == 1)
-  X_cov_baseline <- X_cov[idx_baseline, , drop = FALSE]
+  # Baseline covariates
+  X_cov_full <- model.matrix(fit_out$design_info$formula_T, data = df)
+  X_cov      <- X_cov_full[, colnames(X_cov_full) != "(Intercept)", drop = FALSE]
+  X_cov_baseline <- X_cov[df$k_idx == 1, , drop = FALSE]   # n_pat × p
+  p_baseline <- ncol(X_cov_baseline)
 
-  # 4) Simulation function for one posterior draw m and start time s_start
+  # helper: simulate one posterior draw
   simulate_once <- function(m, s_start) {
-    # Extract parameter vectors for draw m
     beta0_m   <- post$beta0[m, ]
+    gamma0_m  <- post$gamma0[m, ]
     beta_X_m  <- post$beta_X[m, ]
     beta_Y_m  <- post$beta_Y[m]
     beta_A_m  <- post$beta_A[m]
-    gamma0_m  <- post$gamma0[m, ]
     gamma_X_m <- post$gamma_X[m, ]
     gamma_Y_m <- post$gamma_Y[m]
     gamma_A_m <- post$gamma_A[m]
 
-    rates <- numeric(n_pat)
-    for (i in seq_len(n_pat)) {
-      Xi_cov   <- X_cov_baseline[i, ]
-      rate_vec <- numeric(B)
-      for (b in seq_len(B)) {
-        T_prev_sim <- 0L
-        Y_prev_sim <- 0.0
-        num_Y       <- 0.0
-        num_risk    <- 0L
+    # baseline contribution
+    if (p_baseline == 0 || length(beta_X_m) != p_baseline || length(gamma_X_m) != p_baseline) {
+      x_beta  <- numeric(n_pat)
+      x_gamma <- numeric(n_pat)
+    } else {
+      x_beta  <- as.numeric(X_cov_baseline %*% beta_X_m)   # n_pat
+      x_gamma <- as.numeric(X_cov_baseline %*% gamma_X_m)
+    }
 
-        for (k in seq_len(K)) {
-          if (T_prev_sim == 1L) break
+    # replicate across bootstrap replicates
+    x_beta_mat  <- matrix(x_beta,  n_pat, B)
+    x_gamma_mat <- matrix(x_gamma, n_pat, B)
 
-          A_k <- as.integer(k >= s_start)
+    # state matrices
+    alive   <- matrix(TRUE,  n_pat, B)
+    Y_prev  <- matrix(0L,    n_pat, B)
+    num_Y   <- matrix(0L,    n_pat, B)
+    num_atR <- matrix(0L,    n_pat, B)
 
-          # (a) death hazard
-          logit_h <- beta0_m[k] +
-            sum(Xi_cov * beta_X_m) +
-            beta_Y_m * Y_prev_sim +
-            beta_A_m * A_k
-          p_death <- if (is.finite(logit_h)) {
-            pd <- 1 / (1 + exp(-logit_h))
-            ifelse(is.na(pd), 0, pmin(pmax(pd, 0), 1))
-          } else {
-            0
-          }
+    for (k in seq_len(K)) {
+      if (!any(alive)) break
 
-          # draw death indicator safely
-          T_k_sim <- suppressWarnings(stats::rbinom(1, size = 1, prob = p_death))
-          if (identical(T_k_sim, NA_integer_)) T_k_sim <- 0L
-          if (T_k_sim == 1L) {
-            T_prev_sim <- 1L
-            next
-          }
+      A_k <- as.integer(k >= s_start)
 
-          # (b) recurrent event count
-          num_risk <- num_risk + 1L
-          log_mu   <- gamma0_m[k] +
-            sum(Xi_cov * gamma_X_m) +
-            gamma_Y_m * Y_prev_sim +
-            gamma_A_m * A_k
-          mu_k <- if (is.finite(log_mu)) {
-            m0 <- exp(log_mu)
-            m0 <- max(min(m0, 1e4), 1e-6)
-            m0
-          } else {
-            0
-          }
+      # (a) terminal event
+      p_death <- stats::plogis(beta0_m[k] + x_beta_mat + beta_Y_m * Y_prev + beta_A_m * A_k)
+      death_draw <- matrix(stats::rbinom(length(p_death), 1, p_death), n_pat, B)
+      alive <- alive & (death_draw == 0L)
 
-          # draw Poisson count safely
-          Y_k_sim <- suppressWarnings(stats::rpois(1, lambda = mu_k))
-          if (!is.finite(Y_k_sim)) Y_k_sim <- 0
-          Y_prev_sim <- Y_k_sim
-          num_Y      <- num_Y + Y_k_sim
-        } # end for k
+      # (b) recurrent events
+      if (any(alive)) {
+        mu_k <- exp(gamma0_m[k] + x_gamma_mat + gamma_Y_m * Y_prev + gamma_A_m * A_k)
+        mu_k <- pmin(pmax(mu_k, 1e-6), 1e4)
+        Y_k  <- matrix(stats::rpois(length(mu_k), mu_k), n_pat, B)
+        Y_k[!alive] <- 0L
 
-        rate_vec[b] <- if (num_risk > 0L) num_Y / num_risk else 0
-      } # end for b
-      rates[i] <- mean(rate_vec, na.rm = TRUE)
-    } # end for i
-    rates
+        num_atR[alive] <- num_atR[alive] + 1L
+        num_Y   <- num_Y + Y_k
+        Y_prev  <- Y_k
+      }
+    }
+
+    # per-subject mean over B replicates
+    rate_rep <- ifelse(num_atR > 0, num_Y / num_atR, 0)
+    rowMeans(rate_rep)
   }
 
-  # 5) Build R_mat: rows = draws, cols = strategies (s_vec and never treat = K+1)
-  S     <- length(s_vec)
-  R_mat <- matrix(NA_real_, nrow = M, ncol = S + 1)
+  S        <- length(s_vec)
+  R_mat    <- matrix(NA_real_, nrow = M, ncol = S + 1)
   colnames(R_mat) <- c(paste0("s=", s_vec), paste0("s=", K + 1))
 
-  for (m in seq_len(M)) {
-    # never treat case
-    R_never       <- simulate_once(m, K + 1)
-    R_mat[m, S+1] <- stats::weighted.mean(R_never, w = pi_mat[m, ], na.rm = TRUE)
-    # each treatment start
-    for (j in seq_len(S)) {
-      R_s         <- simulate_once(m, s_vec[j])
-      R_mat[m, j] <- stats::weighted.mean(R_s, w = pi_mat[m, ], na.rm = TRUE)
+  # Parallel over posterior draws
+  if (requireNamespace("future.apply", quietly = TRUE)) {
+    R_rows <- future.apply::future_lapply(seq_len(M), function(m) {
+      out <- numeric(S + 1)
+      out[S + 1] <- stats::weighted.mean(simulate_once(m, K + 1), w = pi_mat[m, ])
+      for (j in seq_len(S))
+        out[j] <- stats::weighted.mean(simulate_once(m, s_vec[j]), w = pi_mat[m, ])
+      out
+    }, future.seed = TRUE)
+    R_mat <- do.call(rbind, R_rows)
+  } else {
+    warning("future.apply not installed – falling back to sequential loop; performance will be slower.")
+    for (m in seq_len(M)) {
+      R_mat[m, S + 1] <- stats::weighted.mean(simulate_once(m, K + 1), w = pi_mat[m, ])
+      for (j in seq_len(S))
+        R_mat[m, j] <- stats::weighted.mean(simulate_once(m, s_vec[j]), w = pi_mat[m, ])
     }
   }
 
-  # 6) Compute contrasts delta(s) = R(s) - R(never)
+  # Contrasts
   delta <- setNames(vector("list", S), paste0("s=", s_vec))
   for (j in seq_len(S)) {
-    raw_vals <- R_mat[, j] - R_mat[, S + 1]
-    good     <- raw_vals[is.finite(raw_vals)]
-    if (length(good) == 0L) {
-      warning("All delta draws non-finite for s=", s_vec[j], "; setting to NA")
-      delta[[j]] <- list(
-        draws    = numeric(0),
-        mean     = NA_real_,
-        CI_lower = NA_real_,
-        CI_upper = NA_real_
-      )
+    diff <- R_mat[, j] - R_mat[, S + 1]
+    good <- diff[is.finite(diff)]
+    if (length(good)) {
+      qs <- stats::quantile(good, c(.025, .975))
+      delta[[j]] <- list(draws = good, mean = mean(good), CI_lower = qs[1], CI_upper = qs[2])
     } else {
-      qs <- stats::quantile(good, probs = c(0.025, 0.975), na.rm = TRUE)
-      delta[[j]] <- list(
-        draws    = good,
-        mean     = mean(good, na.rm = TRUE),
-        CI_lower = as.numeric(qs[1]),
-        CI_upper = as.numeric(qs[2])
-      )
+      delta[[j]] <- list(draws = numeric(0), mean = NA_real_, CI_lower = NA_real_, CI_upper = NA_real_)
     }
   }
 
-  out <- list(R_mat = R_mat, delta = delta)
-  class(out) <- "gcomp_out"
-  out
+  structure(list(R_mat = R_mat, delta = delta), class = "gcomp_out")
 }
+
+
+#' Print method for g_computation output
+#'
+#' @description
+#' Print a summary table of causal contrasts delta(s, K+1) for a \code{gcomp_out} object.
+#'
+#' @param x An object of class \code{gcomp_out}, output of \code{g_computation()}.
+#' @param ... Further arguments (ignored).
+#' @return Invisibly returns a data.frame of the summary.
+#' @rdname gcomp_out-print
+#' @method print gcomp_out
+#' @export
+print.gcomp_out <- function(x, ...) {
+  df <- do.call(rbind, lapply(names(x$delta), function(nm) {
+    xi <- x$delta[[nm]]
+    data.frame(
+      s      = as.integer(sub("^s=", "", nm)),
+      Mean   = xi$mean,
+      `2.5%` = xi$CI_lower,
+      `97.5%` = xi$CI_upper,
+      row.names = NULL,
+      stringsAsFactors = FALSE
+    )
+  }))
+  cat("Causal contrast delta(s, K+1) summary:\n")
+  print(df, row.names = FALSE)
+  invisible(df)
+}
+
+
 
 #' Print method for g_computation output
 #'
