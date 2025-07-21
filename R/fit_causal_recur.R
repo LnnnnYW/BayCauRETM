@@ -95,6 +95,7 @@ fit_causal_recur <- function(data,
                              compiled_model_cache = NULL,
                              control = list(adapt_delta = 0.95,
                                             max_treedepth = 15),
+                             cores = 1,
                              verbose = TRUE) {
 
   needed <- c(id_col, time_col, treat_col)
@@ -193,6 +194,7 @@ fit_causal_recur <- function(data,
   stan_fit <- rstan::sampling(
     stan_mod, data = stan_data,
     chains = num_chains, iter = iter,
+    cores = cores,
     seed = 1234, control = control
   )
 

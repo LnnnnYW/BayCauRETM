@@ -61,7 +61,7 @@
 #' @export
 
 
-g_computation <- function(fit_out, s_vec, B = 50) {
+g_computation <- function(Lmat, fit_out, s_vec, B = 50, cores = 1) {
 
   if (!inherits(fit_out$stan_fit, "stanfit"))
     stop("fit_out$stan_fit must be a 'stanfit' object")
@@ -71,9 +71,9 @@ g_computation <- function(fit_out, s_vec, B = 50) {
   K       <- fit_out$K
 
   X_full  <- model.matrix(fit_out$design_info$formula_T, data = df)
-  Lmat    <- X_full[df$k_idx == 1, -1, drop = FALSE]
+  # Lmat    <- X_full[df$k_idx == 1, -1, drop = FALSE]
   P_data  <- ncol(Lmat)
-  if (P_data == 0) Lmat <- matrix(0, n_pat, 0)
+  # if (P_data == 0) Lmat <- matrix(0, n_pat, 0)
 
   post <- rstan::extract(
     fit_out$stan_fit,
@@ -101,14 +101,18 @@ g_computation <- function(fit_out, s_vec, B = 50) {
   sim_interv <- function(Lmat, n,
                          beta0, beta1, betaL,
                          theta0, theta1, thetaL, theta_lag,
-                         s, K, B) {
+                         s, K, B, cores) {
 
     eta_beta  <- if (length(betaL))  as.numeric(Lmat %*% betaL)  else rep(0, n)
     eta_theta <- if (length(thetaL)) as.numeric(Lmat %*% thetaL) else rep(0, n)
 
     ir_shell <- matrix(NA_real_, n, B)
 
-    for (b in 1:B) {
+    #parallel
+    cl <- makeCluster(cores)
+    registerDoParallel(cl)
+
+    ir_shell <- foreach (b = 1:B, .combine = cbind) %dopar% {
       ybar <- tbar <- abar <- matrix(0, n, K)
 
       ## k = 1
@@ -117,6 +121,8 @@ g_computation <- function(fit_out, s_vec, B = 50) {
         n,
         exp(theta0[1] + abar[, 1] * theta1 + eta_theta)
       )
+
+      rbern    <- function(n, p) stats::rbinom(n, 1, p)
 
       ## k = 2..K
       for (k in 2:K) {
@@ -137,13 +143,14 @@ g_computation <- function(fit_out, s_vec, B = 50) {
         ybar[dead_prev, k] <- 0
       }
 
-      ir_shell[, b] <- rowSums(ybar) / (K - rowSums(tbar))
+      # ir_shell[, b] <- rowSums(ybar) / (K - rowSums(tbar))
+      return(rowSums(ybar) / (K - rowSums(tbar)))
     }
-
+    stopCluster(cl)
     rowMeans(ir_shell)
   }
 
-  one_draw <- function(m, s) {
+  one_draw <- function(m, s, cores) {
     sim_interv(Lmat, n_pat,
                beta0      = post$beta0[m, ],
                beta1      = post$beta1[m],
@@ -152,30 +159,25 @@ g_computation <- function(fit_out, s_vec, B = 50) {
                theta1     = post$theta1[m],
                thetaL     = take_thetaL(m),
                theta_lag  = post$theta_lag[m],
-               s = s, K = K, B = B)
+               s = s, K = K, B = B, cores)
   }
 
   ## Dirichlet weighting
   W      <- matrix(stats::rgamma(ndraws * n_pat, 1, 1), ndraws, n_pat)
   pi_mat <- W / rowSums(W)
 
-  calc_row <- function(m) {
-    base <- one_draw(m, K + 1)  # never treat
-    c(vapply(s_vec, function(s) one_draw(m, s), numeric(n_pat)),
-      base)
-  }
-
-  R_mat <- if (requireNamespace("future.apply", quietly = TRUE)) {
-    do.call(rbind,
-            future.apply::future_lapply(seq_len(ndraws), calc_row,
-                                        future.seed = TRUE))
-  } else {
-    t(vapply(seq_len(ndraws), calc_row,
-             numeric(length(s_vec) + 1)))
-  }
-
-  R_mat <- R_mat * pi_mat
-  R_mat <- t(apply(R_mat, 1, colSums))
+  ## Compute the rates for each s in s_vec and for never treating (s = K + 1)
+  s_vec_base <- c(s_vec, K + 1)
+  R_mat <- vector(mode = 'list', length = length(s_vec_base))
+  R_mat <- lapply(s_vec_base, function(s) {
+      do.call(rbind, lapply(
+        seq_len(ndraws),
+        function(m) {
+          one_draw(m, s, cores = cores)
+        })
+      ) * pi_mat
+    })
+  R_mat <- do.call(cbind, lapply(R_mat, rowSums))
 
   colnames(R_mat) <- c(paste0("s=", s_vec), paste0("s=", K + 1))
 
