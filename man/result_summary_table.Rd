@@ -9,7 +9,7 @@
 result_summary_table(
   fit_out,
   gcomp_out,
-  pars_to_report = c("beta_Y", "beta_A", "gamma_Y", "gamma_A"),
+  pars_to_report = c("beta1", "theta1", "theta_lag"),
   s_vec = NULL,
   filter_pars = NULL,
   sort_by = "Mean",

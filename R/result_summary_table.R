@@ -46,7 +46,7 @@
 
 result_summary_table <- function(fit_out,
                                  gcomp_out,
-                                 pars_to_report = c("beta_Y","beta_A","gamma_Y","gamma_A"),
+                                 pars_to_report = c("beta1", "theta1", "theta_lag"),
                                  s_vec         = NULL,
                                  filter_pars   = NULL,
                                  sort_by       = "Mean",
@@ -67,7 +67,7 @@ result_summary_table <- function(fit_out,
       CI_width  = ss[, "97.5%"] - ss[, "2.5%"],
       row.names = NULL, stringsAsFactors = FALSE
     )
-  } else {                               # empty fallback
+  } else {
     df_par <- data.frame(
       Parameter = character(0),
       Mean      = numeric(0),

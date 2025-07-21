@@ -5,86 +5,99 @@
 //    X_T, X_Y: covariates matrix
 
 
-// Discrete-time Bayesian model for recurrent events and terminal event
-// - Terminal event hazard: Bernoulli-logit
-// - Recurrent-event count: Poisson-log, conditional on survival and non-censoring
-// - Time-varying intercepts follow generalized AR(1) priors
-
 data {
-  int<lower=1> N;           // number of rows
-  int<lower=1> n_pat;       // number of subjects
-  int<lower=1> K;           // number of intervals
-  int<lower=1> p_T;         // covariate dimension for hazard
-  int<lower=1> p_Y;         // covariate dimension for count
+  int<lower=0> NY1;
+  int<lower=0> NYk;
+  int<lower=0> NTk;
+  int<lower=1> K;
+  int<lower=1> P;
 
-  int<lower=1,upper=n_pat> pat_id[N];
-  int<lower=1,upper=K>   k_idx[N];
+  int<lower=1,upper=K>         kvecT[NTk];
+  matrix[NTk,P]                L_Tk;
+  vector<lower=0,upper=1>[NTk] A_Tk;
+  int<lower=0,upper=1>         Tk[NTk];
 
-  int<lower=0,upper=1> T_prev[N];
-  int<lower=0,upper=1> A[N];
+  int<lower=1,upper=K>         kvecY[NYk];
+  matrix[NYk,P]                L_Yk;
+  vector<lower=0,upper=1>[NYk] lagYk;
+  vector<lower=0,upper=1>[NYk] A_Yk;
+  int<lower=0>                 Yk[NYk];
 
-  matrix[N,p_T] X_T;
-  int<lower=0> Y_prev[N];
-
-  matrix[N,p_Y] X_Y;
-  int<lower=0,upper=1> T_obs[N];
-  int<lower=0>         Y_obs[N];
-
-  real eta_beta;
-  real<lower=0> sigma_beta;
-  real<lower=-1,upper=1> rho_beta;
-  real eta_gamma;
-  real<lower=0> sigma_gamma;
-  real<lower=-1,upper=1> rho_gamma;
+  matrix[NY1,P]                L_Y1;
+  vector<lower=0,upper=1>[NY1] A_Y1;
+  int<lower=0>                 Y1[NY1];
 }
 
 parameters {
-  vector[K] beta0;
-  vector[K] gamma0;
-  vector[p_T] beta_X;
-  real beta_Y;
-  real beta_A;
-  vector[p_Y] gamma_X;
-  real gamma_Y;
-  real gamma_A;
+  real                beta1;
+  vector[K]           beta_eps;
+  real                beta0_star;
+  vector[P]           betaL;
+  vector<lower=0>[K]  sigma_beta;
+  real<lower=0, upper=1> rho_beta_star;
+
+  real                theta1;
+  vector[K]           theta_eps;
+  real                theta0_star;
+  vector[P]           thetaL;
+  real                theta_lag;
+  vector<lower=0>[K]  sigma_theta;
+  real<lower=0, upper=1> rho_theta_star;
 }
 
-model {
-  // gAR(1) priors on time-varying intercepts
-  beta0[1] ~ normal(eta_beta, sigma_beta);
-  for (k in 2:K)
-    beta0[k] ~ normal(eta_beta + rho_beta * (beta0[k-1] - eta_beta), sigma_beta);
+transformed parameters {
+  real<lower=-1, upper=1> rho_beta  = 2 * (rho_beta_star  - 0.5);
+  real<lower=-1, upper=1> rho_theta = 2 * (rho_theta_star - 0.5);
 
-  gamma0[1] ~ normal(eta_gamma, sigma_gamma);
-  for (k in 2:K)
-    gamma0[k] ~ normal(eta_gamma + rho_gamma * (gamma0[k-1] - eta_gamma), sigma_gamma);
+  vector[K] beta0;
+  vector[K] theta0;
 
-  // weakly informative priors
-  beta_X ~ normal(0, 1);
-  beta_Y ~ normal(0, 1);
-  beta_A ~ normal(0, 1);
-  gamma_X ~ normal(0, 1);
-  gamma_Y ~ normal(0, 1);
-  gamma_A ~ normal(0, 1);
+  beta0[1]  = beta0_star  + sigma_beta[1]  * beta_eps[1];
+  theta0[1] = theta0_star + sigma_theta[1] * theta_eps[1];
 
-  // likelihood
-  for (n in 1:N) {
-    real lp = beta0[k_idx[n]]
-              + X_T[n] * beta_X
-              + beta_Y * Y_prev[n]
-              + beta_A * A[n];
-
-    if (T_prev[n] == 0) {                 // subject still alive at start of interval
-      T_obs[n] ~ bernoulli_logit(lp);
-
-      if (T_obs[n] == 0) {                // if not dead, model recurrent events
-        Y_obs[n] ~ poisson_log(
-          gamma0[k_idx[n]]
-          + X_Y[n] * gamma_X
-          + gamma_Y * Y_prev[n]
-          + gamma_A * A[n]);
-      }
-    }
+  for (k in 2:K) {
+    beta0[k]  = beta0_star  * (1 - rho_beta)  + rho_beta  * beta0[k-1]
+                + sigma_beta[k]  * beta_eps[k];
+    theta0[k] = theta0_star * (1 - rho_theta) + rho_theta * theta0[k-1]
+                + sigma_theta[k] * theta_eps[k];
   }
 }
 
+model {
+  beta_eps  ~ normal(0, 1);
+  theta_eps ~ normal(0, 1);
+
+  beta0_star  ~ normal(0, 1);
+  theta0_star ~ normal(0, 1);
+
+  rho_beta_star  ~ beta(1, 1);
+  rho_theta_star ~ beta(1, 1);
+
+  beta1  ~ normal(0, 1);
+  theta1 ~ normal(0, 1);
+
+  betaL  ~ normal(0, 1);
+  thetaL ~ normal(0, 1);
+  theta_lag ~ normal(0, 1);
+
+  // ---- Vectorized likelihood ----------------------------------------------
+  vector[NTk] eta_T;
+  for (i in 1:NTk)
+    eta_T[i] = beta0[kvecT[i]] + A_Tk[i] * beta1 + dot_product(L_Tk[i], betaL);
+  Tk ~ bernoulli_logit(eta_T);
+
+  if (NY1 > 0) {
+    vector[NY1] eta_Y1;
+    for (i in 1:NY1)
+      eta_Y1[i] = theta0[1] + A_Y1[i] * theta1 + dot_product(L_Y1[i], thetaL);
+    Y1 ~ poisson_log(eta_Y1);
+  }
+
+  if (NYk > 0) {
+    vector[NYk] eta_Yk;
+    for (i in 1:NYk)
+      eta_Yk[i] = theta0[kvecY[i]] + A_Yk[i] * theta1 +
+                  dot_product(L_Yk[i], thetaL) + theta_lag * lagYk[i];
+    Yk ~ poisson_log(eta_Yk);
+  }
+}

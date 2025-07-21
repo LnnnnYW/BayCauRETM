@@ -1,181 +1,200 @@
 # g_computation
-#' Bayesian g-Computation for Recurrent-Event Rate Contrasts
+
+#' Bayesian g‑Computation for Recurrent‑Event Rate Contrasts
 #'
-#' Perform Bayesian g-computation to estimate average recurrent-event
-#' rates under different treatment initiation times versus never treating.
+#' Perform Bayesian g‑computation to estimate average recurrent‑event
+#' rates under different treatment–initiation times versus never treating,
+#' using the **teacher‑style** model parameters returned by
+#' \code{\link{fit_causal_recur}}.
 #'
 #' @param fit_out Output list from \code{\link{fit_causal_recur}}.
-#' @param s_vec Integer vector of treatment-start intervals.
-#' @param B     Number of Monte-Carlo replicates per draw (default 50).
+#' @param s_vec Integer vector of treatment‑start intervals.
+#' @param B     Number of Monte‑Carlo replicates per posterior draw (default
+#'   \code{50}).
 #'
 #' @return An object of class \code{gcomp_out}, a list with components:
 #'   \describe{
-#'     \item{R_mat}{Numeric matrix of dimension M * (length(s_vec)+1), where M is the
-#'       number of posterior draws. Columns are the weighted mean event rates under each
-#'       treatment initiation strategy (including "never treat" as the last column).}
-#'     \item{delta}{Named list of length \code{length(s_vec)}, each element is a list with:
-#'       \code{draws} (numeric vector of contrasts), \code{mean}, \code{CI_lower}, \code{CI_upper}.}
+#'     \item{R_mat}{Numeric matrix with one row per posterior draw and one
+#'       column per treatment strategy (the last column is “never treat”,
+#'       \code{s = K + 1}).  Each entry is the Dirichlet‑weighted mean event
+#'       rate under that strategy.}
+#'     \item{delta}{Named list of length \code{length(s_vec)}.  Each element
+#'       contains the posterior draws of \eqn{\Delta(s)=R(s)-R(K+1)} together
+#'       with its mean and 95% equal‑tail interval.}
 #'   }
 #'
 #' @details
-#' For each posterior draw m:
+#' For each posterior draw \eqn{m=1,\dots,M} the algorithm:
 #' \enumerate{
-#'   \item Draw Dirichlet weights across subjects.
-#'   \item For each treatment start time s in \code{s_vec}, simulate B replicate paths
-#'         of death and recurrent-event counts over intervals 1..K, conditional on starting
-#'         treatment at s (or never treating for s = K+1).
-#'   \item Compute subject-level average event rate (total events / time at risk) for each replicate,
-#'         then average over replicates and weight by Dirichlet weights to obtain the mean rate R(s).
-#'   \item Store R(s) for each s, and for "never treat" (s = K+1). Compute contrast delta(s) = R(s) − R(K+1).
+#'   \item Generates Dirichlet weights across subjects (to mimic the Bayesian
+#'         bootstrap).
+#'   \item For every treatment start time \eqn{s\in s\_vec} \emph{and} for the
+#'         “never‑treat” strategy (\eqn{s=K+1}) it calls an internal simulator
+#'         that propagates the teacher‑style parameters
+#'         \eqn{\{\beta_0(k),\beta_1,\beta_L,\theta_0(k),\theta_1,\theta_L,
+#'         \theta_{\mathrm{lag}}\}} over \eqn{B} replicate paths of
+#'         death/recurrent events.
+#'   \item Computes the subject‑level mean event rate in each replicate, then
+#'         Dirichlet‑averages those rates to obtain \eqn{R_m(s)}.
+#'   \item Stores all \eqn{R_m(s)} and their contrasts
+#'         \eqn{\Delta_m(s)=R_m(s)-R_m(K+1)}.
 #' }
-#' The returned object has class \code{gcomp_out}. S3 methods \code{print}, \code{summary}, and \code{plot}
-#' are provided so that users can call \code{print(gcomp_out)}, \code{summary(gcomp_out)}, or \code{plot(gcomp_out, ...)}.
+#'
+#' S3 methods \code{print}, \code{summary}, and \code{plot} are available; e.g.
+#' \code{print(gcomp_out)}, \code{plot(gcomp_out,interactive=TRUE)}.
 #'
 #' @examples
 #' \dontrun{
-#' # Assuming 'fit' is the output of fit_causal_recur(...)
 #' gcomp_out <- g_computation(fit_out = fit, s_vec = 1:K, B = 20)
-#' print(gcomp_out)                # print summary table of delta(s)
-#' summary(gcomp_out)              # same as print
-#' plot(gcomp_out)                 # static ggplot of delta(s) vs s, with reference line at 0
-#' plot(gcomp_out, interactive = TRUE)  # interactive Plotly plot (requires plotly)
-#' plot(gcomp_out, save_file = "delta_plot.png")  # save static plot
-#' plot(gcomp_out, s_vec = 1:5, line_size = 1.2, ribbon_alpha = 0.2)
+#' print(gcomp_out)
+#' plot(gcomp_out, ref_line = 0)
 #' }
 #'
 #' @importFrom rstan extract
 #' @importFrom stats rgamma rbinom rpois weighted.mean quantile
-#' @importFrom ggplot2 ggplot aes geom_hline geom_errorbar geom_line geom_point geom_text labs scale_color_manual scale_shape_manual theme position_dodge ggsave
+#' @importFrom ggplot2 ggplot aes geom_hline geom_errorbar geom_line geom_point
+#'   geom_text labs scale_color_manual scale_shape_manual theme position_dodge
+#'   ggsave
 #' @importFrom dplyr bind_rows
 #' @importFrom plotly ggplotly
-#' @importFrom stats as.formula median na.omit setNames
-#' @importFrom utils write.csv
+#' @keywords internal
 #' @export
 
+
 g_computation <- function(fit_out, s_vec, B = 50) {
+
   if (!inherits(fit_out$stan_fit, "stanfit"))
     stop("fit_out$stan_fit must be a 'stanfit' object")
 
-  df    <- fit_out$data_preprocessed
-  n_pat <- fit_out$n_pat
-  K     <- fit_out$K
+  df      <- fit_out$data_preprocessed
+  n_pat   <- fit_out$n_pat
+  K       <- fit_out$K
 
-  # Posterior draws
+  X_full  <- model.matrix(fit_out$design_info$formula_T, data = df)
+  Lmat    <- X_full[df$k_idx == 1, -1, drop = FALSE]
+  P_data  <- ncol(Lmat)
+  if (P_data == 0) Lmat <- matrix(0, n_pat, 0)
+
   post <- rstan::extract(
     fit_out$stan_fit,
-    pars = c("beta0", "gamma0", "beta_X", "beta_Y", "beta_A",
-             "gamma_X", "gamma_Y", "gamma_A"),
+    pars = c("beta0","beta1","betaL",
+             "theta0","theta1","thetaL","theta_lag"),
     permuted = TRUE
   )
-  M <- length(post$beta_Y)                 # number of posterior iterations
+  ndraws <- length(post$beta1)
 
-  # Dirichlet weights
-  W      <- matrix(stats::rgamma(M * n_pat, shape = 10, rate = 10),
-                   nrow = M, ncol = n_pat)
+  P_stan <- if (is.null(dim(post$betaL))) 0 else dim(post$betaL)[2]
+
+  take_betaL  <- function(m) {
+    if (P_stan == 0L || P_data == 0L) numeric(0)
+    else as.numeric(post$betaL[m, 1:min(P_data, P_stan), drop = TRUE])
+  }
+  take_thetaL <- function(m) {
+    if (P_stan == 0L || P_data == 0L) numeric(0)
+    else as.numeric(post$thetaL[m, 1:min(P_data, P_stan), drop = TRUE])
+  }
+
+  ## helpers
+  invlogit <- function(x) .Call(stats:::C_logit_linkinv, x)
+  rbern    <- function(n, p) stats::rbinom(n, 1, p)
+
+  sim_interv <- function(Lmat, n,
+                         beta0, beta1, betaL,
+                         theta0, theta1, thetaL, theta_lag,
+                         s, K, B) {
+
+    eta_beta  <- if (length(betaL))  as.numeric(Lmat %*% betaL)  else rep(0, n)
+    eta_theta <- if (length(thetaL)) as.numeric(Lmat %*% thetaL) else rep(0, n)
+
+    ir_shell <- matrix(NA_real_, n, B)
+
+    for (b in 1:B) {
+      ybar <- tbar <- abar <- matrix(0, n, K)
+
+      ## k = 1
+      abar[, 1] <- as.integer(1 >= s)
+      ybar[, 1] <- rpois(
+        n,
+        exp(theta0[1] + abar[, 1] * theta1 + eta_theta)
+      )
+
+      ## k = 2..K
+      for (k in 2:K) {
+        abar[, k] <- as.integer(k >= s)
+
+        ## death process
+        eta_k <- beta0[k] + abar[, k] * beta1 + eta_beta     # length n
+        tbar[, k] <- rbern(n, plogis(eta_k))                 # use plogis for safety
+
+        ## recurrent count
+        mu_k <- theta0[k] + abar[, k] * theta1 + eta_theta +
+          theta_lag * (ybar[, k - 1] > 0)
+        ybar[, k] <- rpois(n, exp(mu_k))
+
+        ## propagate death forward
+        dead_prev <- tbar[, k - 1] == 1
+        tbar[dead_prev, k] <- 1
+        ybar[dead_prev, k] <- 0
+      }
+
+      ir_shell[, b] <- rowSums(ybar) / (K - rowSums(tbar))
+    }
+
+    rowMeans(ir_shell)
+  }
+
+  one_draw <- function(m, s) {
+    sim_interv(Lmat, n_pat,
+               beta0      = post$beta0[m, ],
+               beta1      = post$beta1[m],
+               betaL      = take_betaL(m),
+               theta0     = post$theta0[m, ],
+               theta1     = post$theta1[m],
+               thetaL     = take_thetaL(m),
+               theta_lag  = post$theta_lag[m],
+               s = s, K = K, B = B)
+  }
+
+  ## Dirichlet weighting
+  W      <- matrix(stats::rgamma(ndraws * n_pat, 1, 1), ndraws, n_pat)
   pi_mat <- W / rowSums(W)
 
-  # Baseline covariates
-  X_cov_full <- model.matrix(fit_out$design_info$formula_T, data = df)
-  X_cov      <- X_cov_full[, colnames(X_cov_full) != "(Intercept)", drop = FALSE]
-  X_cov_baseline <- X_cov[df$k_idx == 1, , drop = FALSE]   # n_pat × p
-  p_baseline <- ncol(X_cov_baseline)
-
-  # helper: simulate one posterior draw
-  simulate_once <- function(m, s_start) {
-    beta0_m   <- post$beta0[m, ]
-    gamma0_m  <- post$gamma0[m, ]
-    beta_X_m  <- post$beta_X[m, ]
-    beta_Y_m  <- post$beta_Y[m]
-    beta_A_m  <- post$beta_A[m]
-    gamma_X_m <- post$gamma_X[m, ]
-    gamma_Y_m <- post$gamma_Y[m]
-    gamma_A_m <- post$gamma_A[m]
-
-    # baseline contribution
-    if (p_baseline == 0 || length(beta_X_m) != p_baseline || length(gamma_X_m) != p_baseline) {
-      x_beta  <- numeric(n_pat)
-      x_gamma <- numeric(n_pat)
-    } else {
-      x_beta  <- as.numeric(X_cov_baseline %*% beta_X_m)   # n_pat
-      x_gamma <- as.numeric(X_cov_baseline %*% gamma_X_m)
-    }
-
-    # replicate across bootstrap replicates
-    x_beta_mat  <- matrix(x_beta,  n_pat, B)
-    x_gamma_mat <- matrix(x_gamma, n_pat, B)
-
-    # state matrices
-    alive   <- matrix(TRUE,  n_pat, B)
-    Y_prev  <- matrix(0L,    n_pat, B)
-    num_Y   <- matrix(0L,    n_pat, B)
-    num_atR <- matrix(0L,    n_pat, B)
-
-    for (k in seq_len(K)) {
-      if (!any(alive)) break
-
-      A_k <- as.integer(k >= s_start)
-
-      # (a) terminal event
-      p_death <- stats::plogis(beta0_m[k] + x_beta_mat + beta_Y_m * Y_prev + beta_A_m * A_k)
-      death_draw <- matrix(stats::rbinom(length(p_death), 1, p_death), n_pat, B)
-      alive <- alive & (death_draw == 0L)
-
-      # (b) recurrent events
-      if (any(alive)) {
-        mu_k <- exp(gamma0_m[k] + x_gamma_mat + gamma_Y_m * Y_prev + gamma_A_m * A_k)
-        mu_k <- pmin(pmax(mu_k, 1e-6), 1e4)
-        Y_k  <- matrix(stats::rpois(length(mu_k), mu_k), n_pat, B)
-        Y_k[!alive] <- 0L
-
-        num_atR[alive] <- num_atR[alive] + 1L
-        num_Y   <- num_Y + Y_k
-        Y_prev  <- Y_k
-      }
-    }
-
-    # per-subject mean over B replicates
-    rate_rep <- ifelse(num_atR > 0, num_Y / num_atR, 0)
-    rowMeans(rate_rep)
+  calc_row <- function(m) {
+    base <- one_draw(m, K + 1)  # never treat
+    c(vapply(s_vec, function(s) one_draw(m, s), numeric(n_pat)),
+      base)
   }
 
-  S        <- length(s_vec)
-  R_mat    <- matrix(NA_real_, nrow = M, ncol = S + 1)
+  R_mat <- if (requireNamespace("future.apply", quietly = TRUE)) {
+    do.call(rbind,
+            future.apply::future_lapply(seq_len(ndraws), calc_row,
+                                        future.seed = TRUE))
+  } else {
+    t(vapply(seq_len(ndraws), calc_row,
+             numeric(length(s_vec) + 1)))
+  }
+
+  R_mat <- R_mat * pi_mat
+  R_mat <- t(apply(R_mat, 1, colSums))
+
   colnames(R_mat) <- c(paste0("s=", s_vec), paste0("s=", K + 1))
 
-  # Parallel over posterior draws
-  if (requireNamespace("future.apply", quietly = TRUE)) {
-    R_rows <- future.apply::future_lapply(seq_len(M), function(m) {
-      out <- numeric(S + 1)
-      out[S + 1] <- stats::weighted.mean(simulate_once(m, K + 1), w = pi_mat[m, ])
-      for (j in seq_len(S))
-        out[j] <- stats::weighted.mean(simulate_once(m, s_vec[j]), w = pi_mat[m, ])
-      out
-    }, future.seed = TRUE)
-    R_mat <- do.call(rbind, R_rows)
-  } else {
-    warning("future.apply not installed – falling back to sequential loop; performance will be slower.")
-    for (m in seq_len(M)) {
-      R_mat[m, S + 1] <- stats::weighted.mean(simulate_once(m, K + 1), w = pi_mat[m, ])
-      for (j in seq_len(S))
-        R_mat[m, j] <- stats::weighted.mean(simulate_once(m, s_vec[j]), w = pi_mat[m, ])
-    }
-  }
-
-  # Contrasts
-  delta <- setNames(vector("list", S), paste0("s=", s_vec))
-  for (j in seq_len(S)) {
-    diff <- R_mat[, j] - R_mat[, S + 1]
-    good <- diff[is.finite(diff)]
-    if (length(good)) {
-      qs <- stats::quantile(good, c(.025, .975))
-      delta[[j]] <- list(draws = good, mean = mean(good), CI_lower = qs[1], CI_upper = qs[2])
-    } else {
-      delta[[j]] <- list(draws = numeric(0), mean = NA_real_, CI_lower = NA_real_, CI_upper = NA_real_)
-    }
-  }
+  delta <- lapply(seq_along(s_vec), function(j) {
+    d <- R_mat[, j] - R_mat[, length(s_vec) + 1]
+    qs <- stats::quantile(d, c(.025, .975), na.rm = TRUE)
+    list(draws = d,
+         mean  = mean(d, na.rm = TRUE),
+         CI_lower = qs[1], CI_upper = qs[2])
+  })
+  names(delta) <- paste0("s=", s_vec)
 
   structure(list(R_mat = R_mat, delta = delta), class = "gcomp_out")
 }
+
+
+
+
+
 
 
 #' Print method for g_computation output

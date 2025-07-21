@@ -11,7 +11,7 @@
 \usage{
 mcmc_diagnosis(
   fit_out,
-  pars_to_check = c("beta0", "gamma0", "beta_Y", "beta_A", "gamma_Y", "gamma_A"),
+  pars_to_check = c("beta0", "theta0", "beta1", "theta1", "theta_lag"),
   save_plots = FALSE,
   plot_prefix = "traceplot_",
   positivity = FALSE
@@ -28,12 +28,13 @@ mcmc_diagnosis(
 \code{stan_fit} (an \strong{rstan} \code{stanfit} object) and — if \code{positivity = TRUE} —
 \code{data_preprocessed}.}
 
-\item{pars_to_check}{Character vector of parameter‑name patterns to diagnose
-(default: \code{c("beta0","gamma0","beta_Y","beta_A","gamma_Y","gamma_A")}).
-These are passed as regex to \strong{bayesplot}'s \code{mcmc_trace()}.}
+\item{pars_to_check}{Character vector of parameter‑name patterns to diagnose.
+\strong{Defaults have been updated for the teacher‑style model:}
+\code{c("beta0", "theta0", "beta1", "theta1", "theta_lag")}.
+Patterns are passed to \strong{bayesplot}’s \code{mcmc_trace()}.}
 
-\item{save_plots}{Logical; if \code{TRUE}, saves each trace‑plot as a PNG file using
-\code{plot_prefix}.}
+\item{save_plots}{Logical; if \code{TRUE}, saves each trace‑plot as a PNG file
+using \code{plot_prefix}.}
 
 \item{plot_prefix}{Filename prefix for saved plots (default: \code{"traceplot_"}).}
 
@@ -43,27 +44,23 @@ diagnostics on treatment assignment (default \code{FALSE}).}
 \item{x}{an object used to select a method.}
 
 \item{...}{further arguments passed to or from other methods.}
-
-\item{object}{Object returned by this function (used by summary method).}
-
-\item{pars}{Character vector of parameter patterns to plot.}
 }
 \value{
 An object of class \code{mcmc_diag}, a list with components:
 \itemize{
-\item \strong{stats} — data.frame with \code{Parameter}, \code{n_eff}, and \code{Rhat}.
-\item \strong{plots} — named list of ggplot objects for the trace‑plots.
+\item \strong{stats} — data frame with \code{Parameter}, \code{n_eff}, and \code{Rhat}.
+\item \strong{plots} — named list of ggplot objects for the trace‑plots.
 }
 }
 \description{
-Summarize MCMC convergence for a fitted model (R-hat and effective sample size),
-generate trace‑plots for specified parameters, and optionally perform positivity
-(overlap) diagnostics on treatment assignment.
+Summarize MCMC convergence for a fitted model (R‑hat and effective sample
+size), generate trace‑plots for specified parameters, and optionally perform
+positivity (overlap) diagnostics on treatment assignment.
 }
 \details{
 If \code{positivity = TRUE}, a logistic regression of treatment \code{A} on history
 (\code{Y_prev}, \code{k_idx}) plus any extra covariates is fitted using the
-pre‑processed data.  Propensity‑score summaries and a histogram are produced.
+pre‑processed data. Propensity‑score summaries and a histogram are produced.
 }
 \section{Methods (by generic)}{
 \itemize{
@@ -79,11 +76,7 @@ pre‑processed data.  Propensity‑score summaries and a histogram are produced
 fit_out <- fit_causal_recur(...)
 diag <- mcmc_diagnosis(fit_out, positivity = TRUE)
 print(diag)
-plot(diag, pars = "beta_Y")
+plot(diag, pars = "beta1")
 }
 
-}
-\author{
-Originally by package authors; streamlined to align with new
-\verb{_obs} / \verb{_prev} naming convention.
 }
