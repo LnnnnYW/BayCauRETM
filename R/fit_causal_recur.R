@@ -88,7 +88,7 @@ fit_causal_recur <- function(data,
                              K,
                              id_col, time_col, treat_col,
                              x_cols = NULL,
-                             formula_T, formula_Y,
+                             lagYK, formula_T, formula_Y,
                              prior,
                              num_chains = 4, iter = 2000,
                              stan_model_file = NULL,
@@ -102,10 +102,35 @@ fit_causal_recur <- function(data,
   if (any(miss <- !needed %in% names(data)))
     stop("Columns not found: ", paste(needed[miss], collapse = ", "))
 
-  ## detect user lag variable
+  ## get all variables
   rhs_vars <- union(all.vars(formula_T)[-1], all.vars(formula_Y)[-1])
-  lag_var  <- rhs_vars[grepl("^lag", rhs_vars)]
-  lag_var  <- if (length(lag_var) == 1) lag_var else "lagYk"
+
+  ## deal with lagYK
+  if(is.na(lagYK)) {
+    #stan data cannot be NA
+    lagYK_val <- rep(0, nrow(data))
+  } else {
+    if(is.formula(lagYK)) {
+      lagYK_val <- eval(f[[2]], envir = df, enclos = parent.frame())
+    } else if (is.character(lagYK) && length(lagYK) == 1) {
+      if (!lagYK %in% names(data)) {
+        stop("lagYK column not found in data: ", lagYK)
+      }
+      lagYK_val <- data$lagYK
+    } else if (is.atomic(lagYK) && is.null(dim(lagYK))) {
+      lagYK_val <- lagYK
+    } else if (is.numeric(lagYK)) {
+      lagYK_val <- lagYK
+    } else {
+      stop("lagYK must be a formula, a vector or a column anme")
+    }
+    if (length(lagYK_val) != nrow(data)) {
+      stop("lagYK vector length must match number of rows in data")
+    }
+    if(!is.numeric(lagYK_val)) {
+      stop("lagYK must be numeric")
+    }
+  }
 
   ## copies
   df <- data
@@ -127,7 +152,7 @@ fit_causal_recur <- function(data,
   df <- df[, keep_cols, drop = FALSE]
 
   ## preprocess
-  prep <- preprocess_data(df, K = K, x_cols = x_cols, lag_col = lag_var)
+  prep <- preprocess_data(df, K = K, x_cols = x_cols, lag_val = lagYK_val)
   df   <- prep$processed_df
   n_pat <- prep$n_pat
   df[[event_col]] <- df$T_obs
@@ -165,7 +190,7 @@ fit_causal_recur <- function(data,
 
     kvecY = df_Yk$k_idx,
     L_Yk  = if (P) X_all[df$k_idx > 1, , drop = FALSE] else matrix(0, NYk, 0),
-    lagYk = df_Yk[[lag_var]],
+    lagYk = df_Yk$lagYK,
     A_Yk  = df_Yk$A,
     Yk    = df_Yk$Y_obs,
 

@@ -54,7 +54,7 @@ utils::globalVariables(c(
 #' @noRd
 
 
-preprocess_data <- function(df, K, x_cols = NULL, lag_col = "lagYk") {
+preprocess_data <- function(df, K, x_cols = NULL, lag_val = NA) {
 
   stopifnot(is.data.frame(df))
   stopifnot(is.numeric(K), length(K) == 1, K >= 1)
@@ -64,16 +64,11 @@ preprocess_data <- function(df, K, x_cols = NULL, lag_col = "lagYk") {
     stop("df is missing required columns: ",
          paste(req[miss], collapse = ", "))
 
+  df$lagYK <- lag_val
+
   df <- df |>
     dplyr::arrange(pat_id, k_idx) |>
-    dplyr::mutate(pat_id = as.integer(as.factor(pat_id))) |>
-    dplyr::group_by(pat_id) |>
-    dplyr::mutate(
-      !!lag_col := if (!lag_col %in% names(df))
-        as.integer(dplyr::lag(Y_obs, default = 0) > 0)
-      else !!rlang::sym(lag_col)
-    ) |>
-    dplyr::ungroup()
+    dplyr::mutate(pat_id = as.integer(as.factor(pat_id)))
 
   key_vars <- c("pat_id", "k_idx", "Y_obs", "T_obs", "A", x_cols)
   if (anyNA(df[key_vars])) {
