@@ -47,11 +47,11 @@ fit <- fit_causal_recur(
   treat_col = "Ak",
   x_cols    = c("L.1","L.2"),
   lagYK     = "lagYk",
-  formula_T = Tk ~ Ak + k + `L.1` + `L.2`,
-  formula_Y = Yk ~ Ak + k + `L.1` + `L.2`,
+  formula_T = Tk ~ Ak + lagYK^2 + k + `L.1` + `L.2`,
+  formula_Y = Yk ~ Ak + lagYK^2 + k + `L.1` + `L.2`,
   prior = list(
-    eta_beta = 0,  sigma_beta = 0.7,  rho_beta = 0.6,  rho_beta_kappa = 20,
-    eta_gamma= 0,  sigma_gamma= 0.7,  rho_gamma= 0.6,  rho_gamma_kappa= 20,
+    eta_beta = 0,  sigma_beta = 0.7,  rho_beta = 0.6,
+    eta_gamma= 0,  sigma_gamma= 0.7,  rho_gamma= 0.6,
     sigma_beta1 = 0.5,
     sigma_theta1 = 0.5,
     sigma_theta_lag = 0.5
