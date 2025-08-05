@@ -4,7 +4,7 @@
 \alias{g_computation}
 \title{Bayesian g‑Computation for Recurrent‑Event Rate Contrasts}
 \usage{
-g_computation(fit_out, s_vec, B = 50)
+g_computation(Lmat, fit_out, s_vec, B = 50, cores = 1)
 }
 \arguments{
 \item{fit_out}{Output list from \code{\link{fit_causal_recur}}.}
@@ -23,7 +23,7 @@ column per treatment strategy (the last column is “never treat”,
 rate under that strategy.}
 \item{delta}{Named list of length \code{length(s_vec)}.  Each element
 contains the posterior draws of \eqn{\Delta(s)=R(s)-R(K+1)} together
-with its mean and 95 \% equal‑tail interval.}
+with its mean and 95\% equal‑tail interval.}
 }
 }
 \description{
@@ -42,7 +42,7 @@ bootstrap).
 that propagates the teacher‑style parameters
 \eqn{\{\beta_0(k),\beta_1,\beta_L,\theta_0(k),\theta_1,\theta_L,
         \theta_{\mathrm{lag}}\}} over \eqn{B} replicate paths of
-death / recurrent events.
+death/recurrent events.
 \item Computes the subject‑level mean event rate in each replicate, then
 Dirichlet‑averages those rates to obtain \eqn{R_m(s)}.
 \item Stores all \eqn{R_m(s)} and their contrasts
@@ -50,7 +50,7 @@ Dirichlet‑averages those rates to obtain \eqn{R_m(s)}.
 }
 
 S3 methods \code{print}, \code{summary}, and \code{plot} are available; e.g.
-\code{print(gcomp_out)}, \code{plot(gcomp_out, interactive = TRUE)}.
+\code{print(gcomp_out)}, \code{plot(gcomp_out,interactive=TRUE)}.
 }
 \examples{
 \dontrun{

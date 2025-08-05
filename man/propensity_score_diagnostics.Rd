@@ -10,7 +10,8 @@ propensity_score_diagnostics(
   covariates,
   trim = c(0.01, 0.99),
   plot_types = c("histogram", "density"),
-  bins = 30
+  bins = 30,
+  auto_lag = TRUE
 )
 }
 \arguments{

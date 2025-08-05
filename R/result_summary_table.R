@@ -54,45 +54,68 @@ result_summary_table <- function(fit_out,
                                  format        = "data.frame",
                                  export_file   = NULL) {
 
+  df_par <- data.frame(
+    Parameter = character(0),
+    Mean      = numeric(0),
+    `2.5%`    = numeric(0),
+    `97.5%`   = numeric(0),
+    Rhat      = numeric(0),
+    n_eff     = numeric(0),
+    MCSE      = numeric(0),
+    CI_width  = numeric(0),
+    stringsAsFactors = FALSE
+  )
+
   if (!is.null(fit_out$stan_fit) && inherits(fit_out$stan_fit, "stanfit")) {
-    ss <- rstan::summary(fit_out$stan_fit, pars = pars_to_report)$summary
-    df_par <- data.frame(
-      Parameter = rownames(ss),
-      Mean      = ss[, "mean"],
-      `2.5%`    = ss[, "2.5%"],
-      `97.5%`   = ss[, "97.5%"],
-      Rhat      = ss[, "Rhat"],
-      n_eff     = ss[, "n_eff"],
-      MCSE      = ss[, "se_mean"],
-      CI_width  = ss[, "97.5%"] - ss[, "2.5%"],
-      row.names = NULL, stringsAsFactors = FALSE
-    )
-  } else {
-    df_par <- data.frame(
-      Parameter = character(0),
-      Mean      = numeric(0),
-      `2.5%`    = numeric(0),
-      `97.5%`   = numeric(0),
-      Rhat      = numeric(0),
-      n_eff     = numeric(0),
-      MCSE      = numeric(0),
-      CI_width  = numeric(0),
-      stringsAsFactors = FALSE
-    )
+    all_rows <- rstan::summary(fit_out$stan_fit)$summary
+    all_pars <- rownames(all_rows)
+    keep     <- unlist(lapply(pars_to_report, function(p)
+      grep(paste0("^", gsub("\\[.*\\]$", "", p), "(\\[.*\\])?$"), all_pars)))
+    if (length(keep) > 0) {
+      ss <- all_rows[keep, , drop = FALSE]
+      df_par <- data.frame(
+        Parameter = rownames(ss),
+        Mean      = ss[, "mean"],
+        `2.5%`    = ss[, "2.5%"],
+        `97.5%`   = ss[, "97.5%"],
+        Rhat      = ss[, "Rhat"],
+        n_eff     = ss[, "n_eff"],
+        MCSE      = ss[, "se_mean"],
+        CI_width  = ss[, "97.5%"] - ss[, "2.5%"],
+        row.names = NULL, stringsAsFactors = FALSE
+      )
+    }
+  }
+
+  if (!is.null(filter_pars) && nrow(df_par) > 0) {
+    if (is.character(filter_pars)) {
+      pat <- paste(filter_pars, collapse = "|")
+      df_par <- df_par[grepl(pat, df_par$Parameter), , drop = FALSE]
+    } else {
+      df_par <- dplyr::filter(df_par, !!rlang::enquo(filter_pars))
+    }
+  }
+
+  if (!is.null(sort_by) && sort_by %in% names(df_par) && nrow(df_par) > 0) {
+    df_par <- if (sort_desc) dplyr::arrange(df_par, dplyr::desc(.data[[sort_by]]))
+    else            dplyr::arrange(df_par, .data[[sort_by]])
   }
 
   delta_list <- gcomp_out$delta
-  if (!is.null(s_vec)) delta_list <- delta_list[paste0("s=", s_vec)]
+  if (!is.null(s_vec) && length(delta_list) > 0) {
+    delta_list <- delta_list[paste0("s=", s_vec)]
+    delta_list <- delta_list[!vapply(delta_list, is.null, logical(1))]
+  }
 
   if (length(delta_list) > 0) {
     df_delta <- do.call(rbind, lapply(names(delta_list), function(nm) {
       x <- delta_list[[nm]]
       data.frame(
-        s        = as.integer(sub("^s=", "", nm)),
-        Mean     = x$mean,
-        `2.5%`   = x$CI_lower,
-        `97.5%`  = x$CI_upper,
-        CI_width = x$CI_upper - x$CI_lower,
+        s        = suppressWarnings(as.integer(sub("^s=", "", nm))),
+        Mean     = as.numeric(x$mean),
+        `2.5%`   = as.numeric(x$CI_lower),
+        `97.5%`  = as.numeric(x$CI_upper),
+        CI_width = as.numeric(x$CI_upper - x$CI_lower),
         stringsAsFactors = FALSE
       )
     }))
@@ -108,21 +131,21 @@ result_summary_table <- function(fit_out,
     )
   }
 
-  if (!is.null(filter_pars) && nrow(df_par) > 0) {
-    df_par <- dplyr::filter(df_par, !!rlang::enquo(filter_pars))
-  }
-  if (!is.null(sort_by) && sort_by %in% names(df_par) && nrow(df_par) > 0) {
-    df_par <- if (sort_desc) dplyr::arrange(df_par, dplyr::desc(.data[[sort_by]]))
-    else           dplyr::arrange(df_par, .data[[sort_by]])
-  }
-
   export_path <- NULL
   if (!is.null(export_file)) {
     ext <- tolower(tools::file_ext(export_file))
     if (ext %in% c("xlsx","xls")) {
-      writexl::write_xlsx(list(parameters = df_par, delta = df_delta),
-                          path = export_file)
-      export_path <- export_file
+      if (!requireNamespace("writexl", quietly = TRUE)) {
+        warning("Package 'writexl' not installed; exporting CSVs instead.")
+        write.csv(df_par, export_file, row.names = FALSE)
+        dfile <- sub("(\\.[^.]+)?$", "_delta.csv", export_file)
+        write.csv(df_delta, dfile, row.names = FALSE)
+        export_path <- c(parameters = export_file, delta = dfile)
+      } else {
+        writexl::write_xlsx(list(parameters = df_par, delta = df_delta),
+                            path = export_file)
+        export_path <- export_file
+      }
     } else {
       write.csv(df_par, export_file, row.names = FALSE)
       dfile <- sub("(\\.[^.]+)?$", "_delta.csv", export_file)
@@ -134,11 +157,19 @@ result_summary_table <- function(fit_out,
   fmt <- match.arg(format, c("data.frame","kable","gt"))
   param_table <- delta_table <- NULL
   if (fmt == "kable") {
-    param_table <- knitr::kable(df_par, caption = "Posterior Parameters")
-    delta_table <- knitr::kable(df_delta, caption = "delta(s, K+1)")
+    if (!requireNamespace("knitr", quietly = TRUE))
+      warning("Package 'knitr' not installed; falling back to data.frame.")
+    else {
+      param_table <- knitr::kable(df_par, caption = "Posterior Parameters")
+      delta_table <- knitr::kable(df_delta, caption = "delta(s, K+1)")
+    }
   } else if (fmt == "gt") {
-    param_table <- gt::gt(df_par) %>% gt::tab_header("Posterior Parameters")
-    delta_table <- gt::gt(df_delta) %>% gt::tab_header("delta(s, K+1)")
+    if (!requireNamespace("gt", quietly = TRUE))
+      warning("Package 'gt' not installed; falling back to data.frame.")
+    else {
+      param_table <- gt::gt(df_par) |> gt::tab_header(title = "Posterior Parameters")
+      delta_table <- gt::gt(df_delta) |> gt::tab_header(title = "delta(s, K+1)")
+    }
   }
 
   out <- list(
@@ -149,9 +180,9 @@ result_summary_table <- function(fit_out,
     export_file   = export_path
   )
   class(out) <- c("result_summary_table", "baycar_results")
-
   invisible(out)
 }
+
 
 #' @describeIn result_summary_table Formatted console/knitr/gt output of the two summary tables.
 #' @param object A \code{result_summary_table} object (output of

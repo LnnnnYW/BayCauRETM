@@ -19,13 +19,26 @@ data {
 
   int<lower=1,upper=K>         kvecY[NYk];
   matrix[NYk,P]                L_Yk;
-  vector<lower=0,upper=1>[NYk] lagYk;
+  vector<lower=0>[NYk]         lagYk;
   vector<lower=0,upper=1>[NYk] A_Yk;
   int<lower=0>                 Yk[NYk];
 
   matrix[NY1,P]                L_Y1;
   vector<lower=0,upper=1>[NY1] A_Y1;
   int<lower=0>                 Y1[NY1];
+
+  // ---- hyper-parameters from R ----
+  real eta_beta;
+  real<lower=0> sigma_beta;
+  real<lower=-1,upper=1> rho_beta;
+
+  real eta_gamma;
+  real<lower=0> sigma_gamma;
+  real<lower=-1,upper=1> rho_gamma;
+
+  real<lower=0> sigma_beta1;
+  real<lower=0> sigma_theta1;
+  real<lower=0> sigma_theta_lag;
 }
 
 parameters {
@@ -33,7 +46,7 @@ parameters {
   vector[K]           beta_eps;
   real                beta0_star;
   vector[P]           betaL;
-  vector<lower=0>[K]  sigma_beta;
+  vector<lower=0>[K]  sigma_beta_k;               // renamed
   real<lower=0, upper=1> rho_beta_star;
 
   real                theta1;
@@ -41,46 +54,63 @@ parameters {
   real                theta0_star;
   vector[P]           thetaL;
   real                theta_lag;
-  vector<lower=0>[K]  sigma_theta;
+  vector<lower=0>[K]  sigma_theta_k;              // renamed
   real<lower=0, upper=1> rho_theta_star;
 }
 
 transformed parameters {
-  real<lower=-1, upper=1> rho_beta  = 2 * (rho_beta_star  - 0.5);
-  real<lower=-1, upper=1> rho_theta = 2 * (rho_theta_star - 0.5);
+  // map stars (0..1) -> effective (-1..1)
+  real<lower=-1, upper=1> rho_beta_eff  = 2 * (rho_beta_star  - 0.5);
+  real<lower=-1, upper=1> rho_theta_eff = 2 * (rho_theta_star - 0.5);
 
   vector[K] beta0;
   vector[K] theta0;
 
-  beta0[1]  = beta0_star  + sigma_beta[1]  * beta_eps[1];
-  theta0[1] = theta0_star + sigma_theta[1] * theta_eps[1];
+  beta0[1]  = beta0_star  + sigma_beta_k[1]  * beta_eps[1];
+  theta0[1] = theta0_star + sigma_theta_k[1] * theta_eps[1];
 
   for (k in 2:K) {
-    beta0[k]  = beta0_star  * (1 - rho_beta)  + rho_beta  * beta0[k-1]
-                + sigma_beta[k]  * beta_eps[k];
-    theta0[k] = theta0_star * (1 - rho_theta) + rho_theta * theta0[k-1]
-                + sigma_theta[k] * theta_eps[k];
+    beta0[k]  = beta0_star  * (1 - rho_beta_eff)  + rho_beta_eff  * beta0[k-1]
+                + sigma_beta_k[k]  * beta_eps[k];
+    theta0[k] = theta0_star * (1 - rho_theta_eff) + rho_theta_eff * theta0[k-1]
+                + sigma_theta_k[k] * theta_eps[k];
   }
 }
 
 model {
+  // priors using R hyper-params
   beta_eps  ~ normal(0, 1);
   theta_eps ~ normal(0, 1);
 
-  beta0_star  ~ normal(0, 1);
-  theta0_star ~ normal(0, 1);
+  beta0_star  ~ normal(eta_beta,  sigma_beta);
+  theta0_star ~ normal(eta_gamma, sigma_gamma);
 
-  rho_beta_star  ~ beta(1, 1);
-  rho_theta_star ~ beta(1, 1);
+  sigma_beta_k  ~ normal(0, sigma_beta);
+  sigma_theta_k ~ normal(0, sigma_gamma);
 
-  beta1  ~ normal(0, 1);
-  theta1 ~ normal(0, 1);
+  // rho_*_star ~ Beta(mean=rho_*, concentration=kappa)
+{
+  real m_b = fmin(fmax((rho_beta + 1) / 2, 1e-6), 1 - 1e-6);
+  real a_b = 2 * m_b;
+  real b_b = 2 * (1 - m_b);
+  rho_beta_star ~ beta(a_b, b_b);
+}
+{
+  real m_t = fmin(fmax((rho_gamma + 1) / 2, 1e-6), 1 - 1e-6);
+  real a_t = 2 * m_t;
+  real b_t = 2 * (1 - m_t);
+  rho_theta_star ~ beta(a_t, b_t);
+}
+
+
+  beta1      ~ normal(0, sigma_beta1);
+  theta1     ~ normal(0, sigma_theta1);
+  theta_lag  ~ normal(0, sigma_theta_lag);
 
   betaL  ~ normal(0, 1);
   thetaL ~ normal(0, 1);
-  theta_lag ~ normal(0, 1);
 
-  // ---- Vectorized likelihood ----------------------------------------------
+  // ---- likelihood ----
   vector[NTk] eta_T;
   for (i in 1:NTk)
     eta_T[i] = beta0[kvecT[i]] + A_Tk[i] * beta1 + dot_product(L_Tk[i], betaL);
@@ -97,7 +127,9 @@ model {
     vector[NYk] eta_Yk;
     for (i in 1:NYk)
       eta_Yk[i] = theta0[kvecY[i]] + A_Yk[i] * theta1 +
-                  dot_product(L_Yk[i], thetaL) + theta_lag * lagYk[i];
+                  dot_product(L_Yk[i], thetaL) + theta_lag * log1p(lagYk[i]);
     Yk ~ poisson_log(eta_Yk);
   }
 }
+
+

@@ -54,36 +54,58 @@ utils::globalVariables(c(
 #' @noRd
 
 
-preprocess_data <- function(df, K, x_cols = NULL, lag_col = "lagYk") {
-
+preprocess_data <- function(df, K, x_cols = NULL, lag_col = NULL) {
   stopifnot(is.data.frame(df))
   stopifnot(is.numeric(K), length(K) == 1, K >= 1)
+  if (!is.null(x_cols)) stopifnot(is.character(x_cols))
+  if (!is.null(lag_col)) stopifnot(is.character(lag_col), length(lag_col) == 1)
 
   req <- c("pat_id", "k_idx", "Y_obs", "T_obs", "A")
   if (any(miss <- !req %in% names(df)))
     stop("df is missing required columns: ",
          paste(req[miss], collapse = ", "))
 
-  df <- df |>
-    dplyr::arrange(pat_id, k_idx) |>
-    dplyr::mutate(pat_id = as.integer(as.factor(pat_id))) |>
-    dplyr::group_by(pat_id) |>
-    dplyr::mutate(
-      !!lag_col := if (!lag_col %in% names(df))
-        as.integer(dplyr::lag(Y_obs, default = 0) > 0)
-      else !!rlang::sym(lag_col)
-    ) |>
-    dplyr::ungroup()
+  df <- df[order(df$pat_id, df$k_idx), ]
+  pat_ids <- unique(df$pat_id)
+  pat_map <- setNames(seq_along(pat_ids), pat_ids)
+  df$pat_id <- pat_map[as.character(df$pat_id)]
 
-  key_vars <- c("pat_id", "k_idx", "Y_obs", "T_obs", "A", x_cols)
-  if (anyNA(df[key_vars])) {
-    warning("NA found in covariates – replaced with 0")
-    df[key_vars][is.na(df[key_vars])] <- 0
+
+  if (!is.null(lag_col) && !(lag_col %in% names(df))) {
+    warning("Specified lag_col '", lag_col, "' not found. Auto-generating based on lagged Y_obs > 0.")
+
+    n <- nrow(df)
+    lag_values <- numeric(n)
+
+    pat_starts <- match(unique(df$pat_id), df$pat_id)
+    pat_ends <- c(pat_starts[-1] - 1, n)
+
+    for (i in seq_along(pat_starts)) {
+      start_idx <- pat_starts[i]
+      end_idx <- pat_ends[i]
+      if (end_idx > start_idx) {
+        lag_values[(start_idx + 1):end_idx] <-
+          as.integer(df$Y_obs[start_idx:(end_idx - 1)] > 0)
+      }
+    }
+    df[[lag_col]] <- lag_values
+  }
+
+  if (!is.null(x_cols)) {
+    covar_cols <- intersect(x_cols, names(df))
+    if (length(covar_cols) > 0) {
+      na_cols <- covar_cols[vapply(df[covar_cols], anyNA, logical(1))]
+      if (length(na_cols) > 0) {
+        warning("NA found in covariates: ", paste(na_cols, collapse = ", "),
+                " – replaced with 0")
+        df[na_cols] <- lapply(df[na_cols], function(x) ifelse(is.na(x), 0, x))
+      }
+    }
   }
 
   structure(
     list(processed_df = df,
-         n_pat        = length(unique(df$pat_id))),
+         n_pat        = length(pat_ids)),
     class = c("preprocess_data", "list")
   )
 }

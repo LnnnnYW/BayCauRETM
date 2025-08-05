@@ -47,20 +47,26 @@
 #' @docType class
 #' @export
 mcmc_diagnosis <- function(fit_out,
-                           pars_to_check = c("beta0", "theta0",
-                                             "beta1", "theta1", "theta_lag"),
-                           save_plots    = FALSE,
-                           plot_prefix   = "traceplot_",
-                           positivity    = FALSE) {
+                           pars_to_check  = c("beta0", "theta0", "beta1", "theta1", "thetaLag"),
+                           save_plots     = FALSE,
+                           plot_prefix    = "traceplot_",
+                           positivity     = FALSE,
+                           ps_covariates  = NULL) {
 
-  # sanity
-  if (is.null(fit_out$stan_fit))
-    stop("stan_fit is missing in fit_out")
+  if (!inherits(fit_out, "list") || is.null(fit_out$stan_fit))
+    stop("fit_out must be a list with a valid 'stan_fit' (rstan::stanfit object)")
+
   stan_fit <- fit_out$stan_fit
+  if (!inherits(stan_fit, "stanfit"))
+    stop("fit_out$stan_fit must be a valid 'stanfit' object")
 
-  # convergence stats
+  stan_pars <- names(rstan::extract(stan_fit))
+  use_pars  <- intersect(pars_to_check, stan_pars)
+  if (length(use_pars) == 0)
+    stop("None of the specified 'pars_to_check' exist in the fitted Stan object.")
+
   cat("----- MCMC Rhat & Effective Sample Size -----\n")
-  sum_stats <- rstan::summary(stan_fit, pars = pars_to_check)$summary
+  sum_stats <- rstan::summary(stan_fit, pars = use_pars)$summary
   df_stats  <- data.frame(
     Parameter = rownames(sum_stats),
     n_eff     = sum_stats[, "n_eff"],
@@ -71,15 +77,15 @@ mcmc_diagnosis <- function(fit_out,
   print(df_stats)
   cat("(Values close to Rhat = 1 and large n_eff indicate good convergence.)\n\n")
 
-  # trace‑plots
-  plots <- lapply(pars_to_check, function(par) {
+  # trace-plots
+  plots <- lapply(use_pars, function(par) {
     p <- bayesplot::mcmc_trace(as.array(stan_fit), regex_pars = par) +
       ggplot2::ggtitle(paste0("Traceplot: ", par))
     if (save_plots)
       ggplot2::ggsave(filename = paste0(plot_prefix, par, ".png"), plot = p)
     p
   })
-  names(plots) <- pars_to_check
+  names(plots) <- use_pars
 
   # positivity diagnostics
   if (positivity) {
@@ -87,14 +93,18 @@ mcmc_diagnosis <- function(fit_out,
       warning("data_preprocessed not found in fit_out; cannot perform positivity diagnostics.")
     } else {
       cat("Positivity Diagnostics for Treatment A \n")
-      df <- fit_out$data_preprocessed
-      exclude <- c("pat_id", "k_idx", "Y_obs", "T_obs",
-                   "Y_prev", "T_prev", "A")
-      covariates <- setdiff(names(df), exclude)
 
-      formula_A <- stats::as.formula(paste("A ~",
-                                           paste(c("Y_prev", "k_idx", covariates),
-                                                 collapse = " + ")))
+      df <- fit_out$data_preprocessed
+
+      if (is.null(ps_covariates))
+        stop("positivity = TRUE but no 'ps_covariates' provided.")
+
+      missing <- setdiff(ps_covariates, names(df))
+      if (length(missing) > 0) {
+        stop("ps_covariates not found in data: ", paste(missing, collapse = ", "))
+      }
+
+      formula_A <- as.formula(paste("A ~", paste(ps_covariates, collapse = " + ")))
       mod_ps <- stats::glm(formula_A, data = df, family = stats::binomial)
       ps     <- stats::predict(mod_ps, type = "response")
 
@@ -118,11 +128,11 @@ mcmc_diagnosis <- function(fit_out,
     }
   }
 
-  # return
   out <- list(stats = df_stats, plots = plots)
   class(out) <- "mcmc_diag"
   invisible(out)
 }
+
 
 
 # print / summary / plot methods

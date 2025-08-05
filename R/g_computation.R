@@ -61,7 +61,7 @@
 #' @export
 
 
-g_computation <- function(fit_out, s_vec, B = 50) {
+g_computation <- function(Lmat, fit_out, s_vec, B = 50, cores = 1) {
 
   if (!inherits(fit_out$stan_fit, "stanfit"))
     stop("fit_out$stan_fit must be a 'stanfit' object")
@@ -69,11 +69,7 @@ g_computation <- function(fit_out, s_vec, B = 50) {
   df      <- fit_out$data_preprocessed
   n_pat   <- fit_out$n_pat
   K       <- fit_out$K
-
-  X_full  <- model.matrix(fit_out$design_info$formula_T, data = df)
-  Lmat    <- X_full[df$k_idx == 1, -1, drop = FALSE]
   P_data  <- ncol(Lmat)
-  if (P_data == 0) Lmat <- matrix(0, n_pat, 0)
 
   post <- rstan::extract(
     fit_out$stan_fit,
@@ -82,7 +78,6 @@ g_computation <- function(fit_out, s_vec, B = 50) {
     permuted = TRUE
   )
   ndraws <- length(post$beta1)
-
   P_stan <- if (is.null(dim(post$betaL))) 0 else dim(post$betaL)[2]
 
   take_betaL  <- function(m) {
@@ -94,10 +89,6 @@ g_computation <- function(fit_out, s_vec, B = 50) {
     else as.numeric(post$thetaL[m, 1:min(P_data, P_stan), drop = TRUE])
   }
 
-  ## helpers
-  invlogit <- function(x) .Call(stats:::C_logit_linkinv, x)
-  rbern    <- function(n, p) stats::rbinom(n, 1, p)
-
   sim_interv <- function(Lmat, n,
                          beta0, beta1, betaL,
                          theta0, theta1, thetaL, theta_lag,
@@ -106,92 +97,96 @@ g_computation <- function(fit_out, s_vec, B = 50) {
     eta_beta  <- if (length(betaL))  as.numeric(Lmat %*% betaL)  else rep(0, n)
     eta_theta <- if (length(thetaL)) as.numeric(Lmat %*% thetaL) else rep(0, n)
 
-    ir_shell <- matrix(NA_real_, n, B)
+    abar_vec <- as.integer(seq_len(K) >= s)
 
-    for (b in 1:B) {
-      ybar <- tbar <- abar <- matrix(0, n, K)
+    ybar <- array(0, dim = c(n, K, B))
+    tbar <- array(0, dim = c(n, K, B))
 
-      ## k = 1
-      abar[, 1] <- as.integer(1 >= s)
-      ybar[, 1] <- rpois(
-        n,
-        exp(theta0[1] + abar[, 1] * theta1 + eta_theta)
-      )
+    ## k = 1
+    lambda1 <- exp(theta0[1] + abar_vec[1] * theta1 + eta_theta)
+    ybar[, 1, ] <- matrix(stats::rpois(n * B, lambda1), n, B)
 
-      ## k = 2..K
-      for (k in 2:K) {
-        abar[, k] <- as.integer(k >= s)
+    ## k = 2..K
+    for (k in 2:K) {
+      abar_k  <- abar_vec[k]
 
-        ## death process
-        eta_k <- beta0[k] + abar[, k] * beta1 + eta_beta     # length n
-        tbar[, k] <- rbern(n, plogis(eta_k))                 # use plogis for safety
+      ## death
+      p_death <- plogis(beta0[k] + abar_k * beta1 + eta_beta)
+      tbar[, k, ] <- matrix(stats::rbinom(n * B, 1, p_death), n, B)
 
-        ## recurrent count
-        mu_k <- theta0[k] + abar[, k] * theta1 + eta_theta +
-          theta_lag * (ybar[, k - 1] > 0)
-        ybar[, k] <- rpois(n, exp(mu_k))
+      ## recurrent
+      mu_k <- theta0[k] + abar_k * theta1 + eta_theta +
+        theta_lag * log1p(ybar[, k - 1, ])
+      mu_k <- pmin(mu_k, 700)
+      ybar[, k, ] <- matrix(stats::rpois(n * B, exp(mu_k)), n, B)
 
-        ## propagate death forward
-        dead_prev <- tbar[, k - 1] == 1
-        tbar[dead_prev, k] <- 1
-        ybar[dead_prev, k] <- 0
-      }
-
-      ir_shell[, b] <- rowSums(ybar) / (K - rowSums(tbar))
+      ## propagate death
+      dead_prev <- tbar[, k - 1, ] == 1
+      tbar[dead_prev] <- 1
+      ybar[dead_prev] <- 0
     }
 
-    rowMeans(ir_shell)
-  }
-
-  one_draw <- function(m, s) {
-    sim_interv(Lmat, n_pat,
-               beta0      = post$beta0[m, ],
-               beta1      = post$beta1[m],
-               betaL      = take_betaL(m),
-               theta0     = post$theta0[m, ],
-               theta1     = post$theta1[m],
-               thetaL     = take_thetaL(m),
-               theta_lag  = post$theta_lag[m],
-               s = s, K = K, B = B)
+    ## incidence rate
+    denom <- K - apply(tbar, c(1, 3), sum)
+    num   <- apply(ybar, c(1, 3), sum)
+    ir    <- ifelse(denom == 0, NA_real_, num / denom)
+    rowMeans(ir, na.rm = TRUE)
   }
 
   ## Dirichlet weighting
   W      <- matrix(stats::rgamma(ndraws * n_pat, 1, 1), ndraws, n_pat)
   pi_mat <- W / rowSums(W)
 
-  calc_row <- function(m) {
-    base <- one_draw(m, K + 1)  # never treat
-    c(vapply(s_vec, function(s) one_draw(m, s), numeric(n_pat)),
-      base)
+  cl <- NULL
+  if (cores > 1) {
+    cl <- parallel::makeCluster(cores)
+    on.exit({ if (!is.null(cl)) parallel::stopCluster(cl) }, add = TRUE)
+    parallel::clusterExport(
+      cl,
+      varlist = c("sim_interv", "Lmat", "n_pat", "K", "B",
+                  "take_betaL", "take_thetaL", "post"),
+      envir = environment()
+    )
   }
+  apply_fun <- if (is.null(cl)) lapply else function(X, FUN)
+    parallel::parLapply(cl, X, FUN)
 
-  R_mat <- if (requireNamespace("future.apply", quietly = TRUE)) {
-    do.call(rbind,
-            future.apply::future_lapply(seq_len(ndraws), calc_row,
-                                        future.seed = TRUE))
-  } else {
-    t(vapply(seq_len(ndraws), calc_row,
-             numeric(length(s_vec) + 1)))
-  }
+  s_vec_base <- c(s_vec, K + 1)
+  R_mat_list <- lapply(s_vec_base, function(s) {
+    out_mat <- do.call(rbind,
+                       apply_fun(seq_len(ndraws), function(m) {
+                         sim_interv(
+                           Lmat, n_pat,
+                           beta0     = post$beta0[m, ],
+                           beta1     = post$beta1[m],
+                           betaL     = take_betaL(m),
+                           theta0    = post$theta0[m, ],
+                           theta1    = post$theta1[m],
+                           thetaL    = take_thetaL(m),
+                           theta_lag = post$theta_lag[m],
+                           s = s, K = K, B = B
+                         )
+                       })
+    )
+    out_mat * pi_mat
+  })
 
-  R_mat <- R_mat * pi_mat
-  R_mat <- t(apply(R_mat, 1, colSums))
-
+  R_mat <- do.call(cbind, lapply(R_mat_list, rowSums))
   colnames(R_mat) <- c(paste0("s=", s_vec), paste0("s=", K + 1))
 
+  ## contrasts
   delta <- lapply(seq_along(s_vec), function(j) {
-    d <- R_mat[, j] - R_mat[, length(s_vec) + 1]
+    d  <- R_mat[, j] - R_mat[, length(s_vec) + 1]
     qs <- stats::quantile(d, c(.025, .975), na.rm = TRUE)
     list(draws = d,
          mean  = mean(d, na.rm = TRUE),
-         CI_lower = qs[1], CI_upper = qs[2])
+         CI_lower = qs[1],
+         CI_upper = qs[2])
   })
   names(delta) <- paste0("s=", s_vec)
 
   structure(list(R_mat = R_mat, delta = delta), class = "gcomp_out")
 }
-
-
 
 
 

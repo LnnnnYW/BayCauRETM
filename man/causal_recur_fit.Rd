@@ -16,6 +16,7 @@ fit_causal_recur(
   time_col,
   treat_col,
   x_cols = NULL,
+  lagYK,
   formula_T,
   formula_Y,
   prior,
@@ -24,6 +25,7 @@ fit_causal_recur(
   stan_model_file = NULL,
   compiled_model_cache = NULL,
   control = list(adapt_delta = 0.95, max_treedepth = 15),
+  cores = 1,
   verbose = TRUE
 )
 

@@ -48,8 +48,8 @@ diagnostics on treatment assignment (default \code{FALSE}).}
 \value{
 An object of class \code{mcmc_diag}, a list with components:
 \itemize{
-\item \strong{stats} — data frame with \code{Parameter}, \code{n_eff}, and \code{Rhat}.
-\item \strong{plots} — named list of ggplot objects for the trace‑plots.
+\item \strong{stats} —data frame with \code{Parameter}, \code{n_eff}, and \code{Rhat}.
+\item \strong{plots} —named list of ggplot objects for the trace‑plots.
 }
 }
 \description{

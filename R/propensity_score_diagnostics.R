@@ -73,28 +73,56 @@ propensity_score_diagnostics <- function(data,
                                          covariates,
                                          trim       = c(0.01, 0.99),
                                          plot_types = c("histogram", "density"),
-                                         bins       = 30) {
-  # Input checks
-  if (!treat_col %in% names(data)) {
-    stop("treat_col '", treat_col, "' not found in data")
+                                         bins       = 30,
+                                         auto_lag   = TRUE) {
+  # helpers
+  .match_col <- function(name, pool) {
+    idx <- which(tolower(pool) == tolower(name))
+    if (length(idx)) pool[idx[1]] else NA_character_
   }
-  if (!all(covariates %in% names(data))) {
-    missing <- setdiff(covariates, names(data))
-    stop("Covariate(s) not found: ", paste(missing, collapse = ", "))
+  .safe_vline <- function(p, xs, ...) {
+    xs <- xs[is.finite(xs)]
+    if (length(xs) == 0L) return(p)
+    p + ggplot2::geom_vline(xintercept = xs, ...)
   }
 
+  tcol <- .match_col(treat_col, names(data))
+  if (is.na(tcol))
+    stop("treat_col '", treat_col, "' not found. Available: ",
+         paste(names(data), collapse = ", "))
 
-  formula_ps <- as.formula(paste(treat_col, "~", paste(covariates, collapse = " + ")))
+  real_cov <- vapply(covariates, .match_col, character(1), pool = names(data))
+
+  if (anyNA(real_cov) && auto_lag &&
+      any(tolower(covariates) == "lagyk") &&
+      all(c("pat_id","k_idx","Y_obs") %in% names(data))) {
+
+    if (!"lagYK" %in% names(data)) {
+      data <- data |>
+        dplyr::arrange(pat_id, k_idx) |>
+        dplyr::group_by(pat_id) |>
+        dplyr::mutate(lagYK = dplyr::lag(Y_obs, default = 0)) |>
+        dplyr::ungroup()
+      message("lagYK column auto-generated from Y_obs")
+    }
+    real_cov <- vapply(covariates, .match_col, character(1), pool = names(data))
+  }
+
+  if (anyNA(real_cov)) {
+    miss <- covariates[is.na(real_cov)]
+    stop("Covariate(s) not found: ", paste(miss, collapse = ", "),
+         "\nAvailable columns: ", paste(names(data), collapse = ", "))
+  }
+
+  formula_ps <- stats::as.formula(paste(tcol, "~", paste(real_cov, collapse = " + ")))
   mf         <- stats::model.frame(formula_ps, data = data, na.action = stats::na.omit)
   rows_fit   <- as.integer(rownames(mf))
-
-  mod_ps <- stats::glm(formula_ps, data = mf, family = stats::binomial)
+  mod_ps     <- stats::glm(formula_ps, data = mf, family = stats::binomial)
 
   ps_vec <- rep(NA_real_, nrow(data))
   ps_vec[rows_fit] <- stats::predict(mod_ps, type = "response")
 
-  # Summary statistics
-  ps_nonmiss <- ps_vec[!is.na(ps_vec)]
+  ps_nonmiss <- ps_vec[is.finite(ps_vec)]
   stats_vals <- c(
     min  = min(ps_nonmiss),
     p_lo = stats::quantile(ps_nonmiss, trim[1]),
@@ -115,49 +143,44 @@ propensity_score_diagnostics <- function(data,
     stringsAsFactors = FALSE
   )
 
-  # Flag observations outside trimming bounds
   trim_flag <- !is.na(ps_vec) &
     (ps_vec < stats_vals["p_lo"] | ps_vec > stats_vals["p_hi"])
 
-  # Prepare data for plotting
   df2 <- data
   df2$ps        <- ps_vec
   df2$trim_flag <- trim_flag
 
   plots <- list()
-
   if ("histogram" %in% plot_types) {
-    p_hist <- ggplot2::ggplot(df2, ggplot2::aes(x = ps)) +
+    p <- ggplot2::ggplot(df2, ggplot2::aes(x = ps)) +
       ggplot2::geom_histogram(bins = bins, fill = "grey80", color = "white") +
-      ggplot2::geom_vline(xintercept = c(x_lo, x_hi),
-                          linetype = "dashed", color = "red") +
-      ggplot2::geom_vline(xintercept = c(stats_vals["p05"], stats_vals["p95"]),
-                          linetype = "dotted", color = "blue") +
       ggplot2::labs(title = "Propensity Score Histogram",
                     x = "Propensity Score", y = "Count") +
       ggplot2::theme(plot.title = ggplot2::element_text(hjust = 0.5))
-    plots$histogram <- p_hist
+    p <- .safe_vline(p, c(x_lo, x_hi), linetype = "dashed", color = "red")
+    p <- .safe_vline(p, c(stats_vals["p05"], stats_vals["p95"]),
+                     linetype = "dotted", color = "blue")
+    plots$histogram <- p
   }
 
   if ("density" %in% plot_types) {
-    treat_factor <- as.factor(data[[treat_col]])
-    p_den <- ggplot2::ggplot(df2, ggplot2::aes(x = ps, color = treat_factor, fill = treat_factor)) +
+    treat_factor <- as.factor(data[[tcol]])
+    p <- ggplot2::ggplot(df2, ggplot2::aes(x = ps, color = treat_factor, fill = treat_factor)) +
       ggplot2::geom_density(alpha = 0.2, na.rm = TRUE) +
       ggplot2::scale_color_manual(values = c("0" = "grey60", "1" = "dodgerblue"),
-                                  name   = treat_col) +
+                                  name   = tcol) +
       ggplot2::scale_fill_manual(values  = c("0" = "grey80", "1" = "lightblue"),
-                                 name    = treat_col) +
-      ggplot2::geom_vline(xintercept = c(stats_vals["p_lo"], stats_vals["p_hi"]),
-                          linetype = "dashed", color = "red") +
-      ggplot2::geom_vline(xintercept = c(stats_vals["p05"], stats_vals["p95"]),
-                          linetype = "dotted", color = "blue") +
+                                 name    = tcol) +
       ggplot2::labs(title = "Propensity Score Density by Treatment",
                     x = "Propensity Score", y = "Density") +
       ggplot2::theme(plot.title = ggplot2::element_text(hjust = 0.5))
-    plots$density <- p_den
+    p <- .safe_vline(p, c(stats_vals["p_lo"], stats_vals["p_hi"]),
+                     linetype = "dashed", color = "red")
+    p <- .safe_vline(p, c(stats_vals["p05"], stats_vals["p95"]),
+                     linetype = "dotted", color = "blue")
+    plots$density <- p
   }
 
-  # Output
   out <- list(
     model     = mod_ps,
     ps        = ps_vec,
@@ -168,6 +191,7 @@ propensity_score_diagnostics <- function(data,
   class(out) <- "ps_diag"
   out
 }
+
 
 
 #' Print method for ps_diag
