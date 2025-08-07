@@ -16,6 +16,8 @@ knitr::opts_chunk$set(
 [![R-CMD-check](https://github.com/LnnnnYW/BayCauRETM/actions/workflows/coverage.yaml/badge.svg)](https://github.com/LnnnnYW/BayCauRETM/actions/workflows/coverage.yaml)
 [![Coverage Status](https://coveralls.io/repos/github/LnnnnYW/BayCauRETM/badge.svg)](https://coveralls.io/github/LnnnnYW/BayCauRETM)
 ![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)
+[![R-CMD-check](https://github.com/LnnnnYW/BayCauRETM/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/LnnnnYW/BayCauRETM/actions/workflows/R-CMD-check.yaml)
+[![Codecov test coverage](https://codecov.io/gh/LnnnnYW/BayCauRETM/graph/badge.svg)](https://app.codecov.io/gh/LnnnnYW/BayCauRETM)
 <!-- badges: end -->
 
 
