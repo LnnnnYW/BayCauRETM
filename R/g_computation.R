@@ -60,8 +60,11 @@
 #' @keywords internal
 #' @export
 
-
-g_computation <- function(Lmat, fit_out, s_vec, B = 50, cores = 1) {
+g_computation <- function(Lmat,
+                          fit_out,
+                          s_vec,
+                          B     = 50,
+                          cores = 1) {
 
   if (!inherits(fit_out$stan_fit, "stanfit"))
     stop("fit_out$stan_fit must be a 'stanfit' object")
@@ -73,14 +76,14 @@ g_computation <- function(Lmat, fit_out, s_vec, B = 50, cores = 1) {
 
   post <- rstan::extract(
     fit_out$stan_fit,
-    pars = c("beta0","beta1","betaL",
-             "theta0","theta1","thetaL","theta_lag"),
+    pars = c("beta0", "beta1", "betaL",
+             "theta0", "theta1", "thetaL", "thetaLag"),
     permuted = TRUE
   )
   ndraws <- length(post$beta1)
   P_stan <- if (is.null(dim(post$betaL))) 0 else dim(post$betaL)[2]
 
-  take_betaL  <- function(m) {
+  take_betaL <- function(m) {
     if (P_stan == 0L || P_data == 0L) numeric(0)
     else as.numeric(post$betaL[m, 1:min(P_data, P_stan), drop = TRUE])
   }
@@ -88,10 +91,15 @@ g_computation <- function(Lmat, fit_out, s_vec, B = 50, cores = 1) {
     if (P_stan == 0L || P_data == 0L) numeric(0)
     else as.numeric(post$thetaL[m, 1:min(P_data, P_stan), drop = TRUE])
   }
+  take_thetaLag <- function(m) {
+    if (is.null(dim(post$thetaLag))) post$thetaLag[m]        # QlagY == 1
+    else if (length(post$thetaLag) == 0) 0                   # QlagY == 0
+    else post$thetaLag[m, 1]
+  }
 
   sim_interv <- function(Lmat, n,
                          beta0, beta1, betaL,
-                         theta0, theta1, thetaL, theta_lag,
+                         theta0, theta1, thetaL, theta_lag_scalar,
                          s, K, B) {
 
     eta_beta  <- if (length(betaL))  as.numeric(Lmat %*% betaL)  else rep(0, n)
@@ -102,21 +110,21 @@ g_computation <- function(Lmat, fit_out, s_vec, B = 50, cores = 1) {
     ybar <- array(0, dim = c(n, K, B))
     tbar <- array(0, dim = c(n, K, B))
 
-    ## k = 1
+    ## k = 1 with no lag
     lambda1 <- exp(theta0[1] + abar_vec[1] * theta1 + eta_theta)
     ybar[, 1, ] <- matrix(stats::rpois(n * B, lambda1), n, B)
 
-    ## k = 2..K
+    ## k = 2 ... K
     for (k in 2:K) {
-      abar_k  <- abar_vec[k]
+      abar_k <- abar_vec[k]
 
       ## death
       p_death <- plogis(beta0[k] + abar_k * beta1 + eta_beta)
       tbar[, k, ] <- matrix(stats::rbinom(n * B, 1, p_death), n, B)
 
-      ## recurrent
+      ## recurrent events
       mu_k <- theta0[k] + abar_k * theta1 + eta_theta +
-        theta_lag * log1p(ybar[, k - 1, ])
+        theta_lag_scalar * log1p(ybar[, k - 1, ])
       mu_k <- pmin(mu_k, 700)
       ybar[, k, ] <- matrix(stats::rpois(n * B, exp(mu_k)), n, B)
 
@@ -126,25 +134,24 @@ g_computation <- function(Lmat, fit_out, s_vec, B = 50, cores = 1) {
       ybar[dead_prev] <- 0
     }
 
-    ## incidence rate
     denom <- K - apply(tbar, c(1, 3), sum)
     num   <- apply(ybar, c(1, 3), sum)
     ir    <- ifelse(denom == 0, NA_real_, num / denom)
     rowMeans(ir, na.rm = TRUE)
   }
 
-  ## Dirichlet weighting
+  ##  Dirichlet Weights
   W      <- matrix(stats::rgamma(ndraws * n_pat, 1, 1), ndraws, n_pat)
   pi_mat <- W / rowSums(W)
 
   cl <- NULL
   if (cores > 1) {
     cl <- parallel::makeCluster(cores)
-    on.exit({ if (!is.null(cl)) parallel::stopCluster(cl) }, add = TRUE)
+    on.exit({ parallel::stopCluster(cl) }, add = TRUE)
     parallel::clusterExport(
       cl,
       varlist = c("sim_interv", "Lmat", "n_pat", "K", "B",
-                  "take_betaL", "take_thetaL", "post"),
+                  "take_betaL", "take_thetaL", "take_thetaLag", "post"),
       envir = environment()
     )
   }
@@ -157,36 +164,37 @@ g_computation <- function(Lmat, fit_out, s_vec, B = 50, cores = 1) {
                        apply_fun(seq_len(ndraws), function(m) {
                          sim_interv(
                            Lmat, n_pat,
-                           beta0     = post$beta0[m, ],
-                           beta1     = post$beta1[m],
-                           betaL     = take_betaL(m),
-                           theta0    = post$theta0[m, ],
-                           theta1    = post$theta1[m],
-                           thetaL    = take_thetaL(m),
-                           theta_lag = post$theta_lag[m],
+                           beta0  = post$beta0[m, ],
+                           beta1  = post$beta1[m],
+                           betaL  = take_betaL(m),
+                           theta0 = post$theta0[m, ],
+                           theta1 = post$theta1[m],
+                           thetaL = take_thetaL(m),
+                           theta_lag_scalar = take_thetaLag(m),
                            s = s, K = K, B = B
                          )
                        })
     )
-    out_mat * pi_mat
+    out_mat * pi_mat     # Dirichlet re-weight
   })
 
   R_mat <- do.call(cbind, lapply(R_mat_list, rowSums))
   colnames(R_mat) <- c(paste0("s=", s_vec), paste0("s=", K + 1))
 
-  ## contrasts
   delta <- lapply(seq_along(s_vec), function(j) {
     d  <- R_mat[, j] - R_mat[, length(s_vec) + 1]
     qs <- stats::quantile(d, c(.025, .975), na.rm = TRUE)
     list(draws = d,
-         mean  = mean(d, na.rm = TRUE),
-         CI_lower = qs[1],
-         CI_upper = qs[2])
+         mean       = mean(d, na.rm = TRUE),
+         CI_lower   = qs[1],
+         CI_upper   = qs[2])
   })
   names(delta) <- paste0("s=", s_vec)
 
-  structure(list(R_mat = R_mat, delta = delta), class = "gcomp_out")
+  structure(list(R_mat = R_mat, delta = delta),
+            class = "gcomp_out")
 }
+
 
 
 
@@ -299,11 +307,13 @@ plot.gcomp_out <- function(x,
                            height      = 5,
                            dpi         = 300,
                            ...) {
-  # Decide static vs interactive or save
+
+  if (inherits(x, "gcomp_out"))    contrast_list <- list(default = x)
+  else                              contrast_list <- x
+
   if (interactive || !is.null(save_file)) {
-    # Use interactive wrapper; requires plot_posterior_causal_contrast_interactive to exist
     p <- plot_posterior_causal_contrast_interactive(
-      contrast_list = x,
+      contrast_list = contrast_list,
       s_vec         = s_vec,
       ref_line      = ref_line,
       theme_fn      = theme_fn,
@@ -315,15 +325,13 @@ plot.gcomp_out <- function(x,
       ...
     )
   } else {
-    # Static plot; requires plot_posterior_causal_contrast_static to exist
     p <- plot_posterior_causal_contrast_static(
-      contrast_list = x,
+      contrast_list = contrast_list,
       s_vec         = s_vec,
       ref_line      = ref_line,
       theme_fn      = theme_fn,
       ...
     )
   }
-  print(p)
-  invisible(p)
+  print(p); invisible(p)
 }

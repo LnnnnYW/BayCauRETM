@@ -32,30 +32,29 @@
 plot_posterior_causal_contrast_interactive <- function(contrast_list,
                                                        s_vec        = NULL,
                                                        theme_fn     = ggplot2::theme_minimal,
-                                                       line_size    = 1,
-                                                       ribbon_alpha = 0.3,
-                                                       show_points  = TRUE,
-                                                       label_points = FALSE,
+                                                       point_size   = 3,
+                                                       error_width  = .15,
                                                        ref_line     = NULL,
                                                        interactive  = FALSE,
                                                        save_file    = NULL,
                                                        width        = 8,
                                                        height       = 5,
-                                                       dpi          = 300) {
+                                                       dpi          = 300,
+                                                       ...) {
 
   p <- plot_posterior_causal_contrast_static(
     contrast_list = contrast_list,
     s_vec         = s_vec,
     theme_fn      = theme_fn,
-    line_size     = line_size,
-    ribbon_alpha  = ribbon_alpha,
-    show_points   = show_points,
-    label_points  = label_points,
-    ref_line      = ref_line
+    point_size    = point_size,
+    error_width   = error_width,
+    ref_line      = ref_line,
+    ...
   )
 
   if (!is.null(save_file))
-    ggplot2::ggsave(save_file, plot = p, width = width, height = height, dpi = dpi)
+    ggplot2::ggsave(save_file, plot = p,
+                    width = width, height = height, dpi = dpi)
 
   if (interactive) {
     p <- p + ggplot2::labs(
@@ -64,10 +63,11 @@ plot_posterior_causal_contrast_interactive <- function(contrast_list,
     )
 
     if (!requireNamespace("plotly", quietly = TRUE))
-      stop("Package 'plotly' required for interactive output.")
+      stop("Package 'plotly' required for interactive output. Please install it.")
     return(plotly::ggplotly(p))
   }
 
   p
 }
+
 

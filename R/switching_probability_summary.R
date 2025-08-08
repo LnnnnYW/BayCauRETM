@@ -90,7 +90,6 @@ switching_probability_summary <- function(df, covariates = NULL) {
   } else {
     if (any(df[[lag_col]] < 0, na.rm = TRUE) || any(df[[lag_col]] > 1, na.rm = TRUE)) {
       df[[lag_col]] <- as.numeric(df[[lag_col]] > 0)
-      message("lagYK converted to 0/1 indicator (lag>0) to align with the model.")
     }
   }
 
@@ -188,7 +187,6 @@ plot.switching_summary <- function(x,
                                    ...) {
   type <- match.arg(type)
   df2 <- x$df2
-  # 消掉 NA，避免警告
   df2 <- df2[is.finite(df2$switch_prob) & is.finite(df2$k_idx), , drop = FALSE]
 
   if (type == "boxplot") {

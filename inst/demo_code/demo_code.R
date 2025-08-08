@@ -1,5 +1,7 @@
 # inst/demo/demo_code.R
 
+
+# write it into markdown
 library(BayCauRETM)
 library(dplyr)
 library(tidyr)
@@ -21,9 +23,11 @@ s_vec  <- c(3, 6, 9)
 
 # load("data.Rdata")
 
+
 df_fit <- df %>%
   filter(id %in% 1:100) %>%
   arrange(id, k) %>%
+  mutate(k_fac = as.integer(factor(k, levels = sort(unique(k))))) %>%
   group_by(id) %>%
   mutate(
     lagYk = if ("lagYk" %in% names(.)) replace_na(lagYk, 0) else lag(Yk, default = 0)
@@ -31,24 +35,24 @@ df_fit <- df %>%
   ungroup() %>%
   drop_na(Tk, Yk, Ak, L.1, L.2) %>%
   mutate(
-    k   = as.numeric(scale(k)),
     L.1 = as.numeric(scale(L.1)),
     L.2 = as.numeric(scale(L.2))
   )
+K <- length(unique(df_fit$k_fac))
 
-K <- max(df$k)
 
 message("Fitting model with cached compiled Stan...")
+
+
 fit <- fit_causal_recur(
   data      = df_fit,
   K         = K,
   id_col    = "id",
-  time_col  = "k",
+  time_col  = "k_fac",
   treat_col = "Ak",
-  x_cols    = c("L.1","L.2"),
-  lagYK     = "lagYk",
-  formula_T = Tk ~ Ak + lagYK^2 + k + `L.1` + `L.2`,
-  formula_Y = Yk ~ Ak + lagYK^2 + k + `L.1` + `L.2`,
+  lag_col   = "lagYk",
+  formula_T = Tk ~ Ak + I(lagYk^2) + L.1 + L.2,
+  formula_Y = Yk ~ Ak + I(lagYk^2) + L.1 + L.2,
   prior = list(
     eta_beta = 0,  sigma_beta = 0.7,  rho_beta = 0.6,
     eta_gamma= 0,  sigma_gamma= 0.7,  rho_gamma= 0.6,
@@ -56,12 +60,8 @@ fit <- fit_causal_recur(
     sigma_theta1 = 0.5,
     sigma_theta_lag = 0.5
   ),
-  num_chains = 4,
-  iter       = iter,
-  cores      = cores,
-  control    = list(adapt_delta = 0.99, max_treedepth = 15),
-  stan_model_file = "inst/stan/causal_recur_model.stan",
-  verbose    = TRUE
+  cores     = 4,
+  verbose   = TRUE
 )
 
 # 2) MCMC Diagnosis
@@ -76,15 +76,22 @@ baseline_df <- fit$data_preprocessed %>%
   arrange(pat_id) %>%
   ungroup()
 
+# set it into gcomp
 rhs_terms <- stats::delete.response(stats::terms(fit$design_info$formula_T))
 Lmat <- model.matrix(rhs_terms, data = baseline_df)
 Lmat <- Lmat[, colnames(Lmat) != "(Intercept)", drop = FALSE]
 
 # 4) g-computation
 message("Running g-computation...")
-gcomp <- g_computation(Lmat, fit, s_vec = s_vec, B = B, cores = cores)
+gcomp <- g_computation(
+  Lmat, fit,
+  s_vec = s_vec,
+  B     = B,
+  cores = cores
+)
 print(gcomp)
 plot(gcomp, ref_line = 0)
+plot(gcomp, interactive = TRUE, ref_line = 0)
 
 # 5) PS Diagnosis
 ps_diag <- propensity_score_diagnostics(
@@ -97,7 +104,8 @@ plot(ps_diag, type = "density")
 
 # 6) Switching Probability
 sw_diag <- switching_probability_summary(fit$data_preprocessed)
-plot(sw_diag)
+plot(sw_diag, type = "boxplot")
+
 
 # 7) Results
 sum_tbl <- result_summary_table(

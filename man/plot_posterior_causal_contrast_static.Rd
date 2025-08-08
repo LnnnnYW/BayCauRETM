@@ -8,11 +8,10 @@ plot_posterior_causal_contrast_static(
   contrast_list,
   s_vec = NULL,
   theme_fn = ggplot2::theme_minimal,
-  ribbon_alpha = 0.3,
-  line_size = 1,
-  show_points = TRUE,
-  label_points = FALSE,
-  ref_line = NULL
+  point_size = 3,
+  error_width = 0.15,
+  ref_line = NULL,
+  ...
 )
 }
 \arguments{
@@ -25,17 +24,17 @@ of such objects to compare several scenarios side-by-side.}
 \item{theme_fn}{A ggplot2 theme function (default
 \code{ggplot2::theme_minimal}).}
 
-\item{ribbon_alpha}{Numeric in 0 to 1; transparency of credible-interval
-ribbons (default 0.3).}
+\item{ref_line}{Numeric or \code{NULL}; if numeric, draws a horizontal dashed
+line at that \emph{y}.  Typical use \code{ref_line = 0}.}
 
 \item{line_size}{Numeric; width of mean line (default 1).}
+
+\item{ribbon_alpha}{Numeric in 0 to 1; transparency of credible-interval
+ribbons (default 0.3).}
 
 \item{show_points}{Logical; draw points at each \eqn{s}? (default \code{TRUE}).}
 
 \item{label_points}{Logical; annotate mean value at points? (default \code{FALSE}).}
-
-\item{ref_line}{Numeric or \code{NULL}; if numeric, draws a horizontal dashed
-line at that \emph{y}.  Typical use \code{ref_line = 0}.}
 }
 \value{
 A \link[ggplot2]{ggplot} object.

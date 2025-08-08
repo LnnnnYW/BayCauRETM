@@ -11,10 +11,11 @@
 \usage{
 mcmc_diagnosis(
   fit_out,
-  pars_to_check = c("beta0", "theta0", "beta1", "theta1", "theta_lag"),
+  pars_to_check = c("beta0", "theta0", "beta1", "theta1", "thetaLag"),
   save_plots = FALSE,
   plot_prefix = "traceplot_",
-  positivity = FALSE
+  positivity = FALSE,
+  ps_covariates = NULL
 )
 
 \method{print}{mcmc_diag}(x, ...)

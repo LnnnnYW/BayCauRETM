@@ -42,11 +42,10 @@
 plot_posterior_causal_contrast_static <- function(contrast_list,
                                                   s_vec        = NULL,
                                                   theme_fn     = ggplot2::theme_minimal,
-                                                  ribbon_alpha = 0.3,
-                                                  line_size    = 1,
-                                                  show_points  = TRUE,
-                                                  label_points = FALSE,
-                                                  ref_line     = NULL) {
+                                                  point_size   = 3,
+                                                  error_width  = .15,
+                                                  ref_line     = NULL,
+                                                  ...) {
 
   if (!is.list(contrast_list) ||
       (length(contrast_list) > 0 && !inherits(contrast_list[[1]], "gcomp_out"))) {
@@ -74,22 +73,15 @@ plot_posterior_causal_contrast_static <- function(contrast_list,
   df_plot$scenario <- factor(df_plot$scenario, levels = names(contrast_list))
 
   ggplot2::ggplot(df_plot,
-                  ggplot2::aes(x = s, y = mean,
-                               colour = scenario, fill = scenario)) +
+                  ggplot2::aes(x = factor(s), y = mean,
+                               colour = scenario, group = scenario)) +
     { if (!is.null(ref_line))
       ggplot2::geom_hline(yintercept = ref_line, linetype = "dashed") } +
-    ggplot2::geom_ribbon(ggplot2::aes(ymin = lower, ymax = upper),
-                         alpha = ribbon_alpha, colour = NA,
-                         position = ggplot2::position_dodge(width = 0.5)) +
-    ggplot2::geom_line(linewidth = line_size,
-                       position = ggplot2::position_dodge(width = 0.5)) +
-    { if (show_points)
-      ggplot2::geom_point(size = 2,
-                          position = ggplot2::position_dodge(width = 0.5)) } +
-    { if (label_points)
-      ggplot2::geom_text(ggplot2::aes(label = signif(mean, 3)),
-                         vjust = -0.5,
-                         position = ggplot2::position_dodge(width = 0.5)) } +
+    ggplot2::geom_errorbar(ggplot2::aes(ymin = lower, ymax = upper),
+                           width = error_width,
+                           position = ggplot2::position_dodge(width = .6)) +
+    ggplot2::geom_point(size = point_size,
+                        position = ggplot2::position_dodge(width = .6)) +
     ggplot2::labs(
       x = "Treatment-start interval s",
       y = expression(Delta(s, K+1)),
@@ -98,3 +90,4 @@ plot_posterior_causal_contrast_static <- function(contrast_list,
     theme_fn() +
     ggplot2::theme(legend.position = "bottom")
 }
+

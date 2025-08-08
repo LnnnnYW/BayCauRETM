@@ -8,16 +8,15 @@ plot_posterior_causal_contrast_interactive(
   contrast_list,
   s_vec = NULL,
   theme_fn = ggplot2::theme_minimal,
-  line_size = 1,
-  ribbon_alpha = 0.3,
-  show_points = TRUE,
-  label_points = FALSE,
+  point_size = 3,
+  error_width = 0.15,
   ref_line = NULL,
   interactive = FALSE,
   save_file = NULL,
   width = 8,
   height = 5,
-  dpi = 300
+  dpi = 300,
+  ...
 )
 }
 \arguments{
@@ -30,14 +29,6 @@ of such objects to compare several scenarios side-by-side.}
 \item{theme_fn}{A ggplot2 theme function (default
 \code{ggplot2::theme_minimal}).}
 
-\item{line_size}{Numeric; width of the mean line (default 1).}
-
-\item{ribbon_alpha}{Numeric in 0 to 1; transparency of credible-interval}
-
-\item{show_points}{Logical; draw points at each \eqn{s}? (default \code{TRUE}).}
-
-\item{label_points}{Logical; annotate mean value at points? (default \code{FALSE}).}
-
 \item{ref_line}{Numeric or \code{NULL}; if numeric, draws a horizontal dashed
 line at that \emph{y}.  Typical use \code{ref_line = 0}.}
 
@@ -46,6 +37,10 @@ line at that \emph{y}.  Typical use \code{ref_line = 0}.}
 \item{save_file}{Optional filename to save static plot (PNG/PDF, etc.).}
 
 \item{width, height, dpi}{Device settings when saving.}
+
+\item{line_size}{Numeric; width of the mean line (default 1).}
+
+\item{ribbon_alpha}{Numeric in 0 to 1; transparency of credible-interval}
 }
 \value{
 ggplot or plotly object.

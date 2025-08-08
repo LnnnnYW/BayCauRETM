@@ -53,11 +53,9 @@ utils::globalVariables(c(
 #' @keywords internal
 #' @noRd
 
-
-preprocess_data <- function(df, K, x_cols = NULL, lag_col = NULL) {
+preprocess_data <- function(df, K, lag_col = NULL) {
   stopifnot(is.data.frame(df))
   stopifnot(is.numeric(K), length(K) == 1, K >= 1)
-  if (!is.null(x_cols)) stopifnot(is.character(x_cols))
   if (!is.null(lag_col)) stopifnot(is.character(lag_col), length(lag_col) == 1)
 
   req <- c("pat_id", "k_idx", "Y_obs", "T_obs", "A")
@@ -91,17 +89,6 @@ preprocess_data <- function(df, K, x_cols = NULL, lag_col = NULL) {
     df[[lag_col]] <- lag_values
   }
 
-  if (!is.null(x_cols)) {
-    covar_cols <- intersect(x_cols, names(df))
-    if (length(covar_cols) > 0) {
-      na_cols <- covar_cols[vapply(df[covar_cols], anyNA, logical(1))]
-      if (length(na_cols) > 0) {
-        warning("NA found in covariates: ", paste(na_cols, collapse = ", "),
-                " – replaced with 0")
-        df[na_cols] <- lapply(df[na_cols], function(x) ifelse(is.na(x), 0, x))
-      }
-    }
-  }
 
   structure(
     list(processed_df = df,

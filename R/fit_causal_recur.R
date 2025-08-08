@@ -83,191 +83,153 @@
 #' @docType class
 #' @export
 
+fit_causal_recur <- function(
+    data, K,
+    id_col, time_col, treat_col,
+    formula_T, formula_Y,
+    prior,
+    num_chains = 4, iter = 2000,
+    stan_model_file = "inst/stan/causal_recur_model.rds",
+    control = list(adapt_delta = 0.95, max_treedepth = 15),
+    cores = 1,
+    verbose = TRUE,
+    lag_col = NULL
+) {
+  need_cols <- c(id_col, time_col, treat_col)
+  if (any(miss <- !need_cols %in% names(data)))
+    stop("Columns not found: ", paste(need_cols[miss], collapse = ", "))
 
-fit_causal_recur <- function(data,
-                             K,
-                             id_col, time_col, treat_col,
-                             x_cols = NULL,
-                             formula_T, formula_Y,
-                             prior,
-                             num_chains = 4, iter = 2000,
-                             stan_model_file = NULL,
-                             compiled_model_cache = NULL,
-                             control = list(adapt_delta = 0.95, max_treedepth = 15),
-                             cores = 1,
-                             verbose = TRUE,
-                             lag_col = NULL) {
+  event_col <- all.vars(formula_T)[1]   # Tk
+  count_col <- all.vars(formula_Y)[1]   # Yk
+  if (!(event_col %in% names(data))) stop("Event column '", event_col, "' not found")
+  if (!(count_col %in% names(data))) stop("Count column '", count_col, "' not found")
 
-  needed <- c(id_col, time_col, treat_col)
-  if (any(miss <- !needed %in% names(data)))
-    stop("Columns not found: ", paste(needed[miss], collapse = ", "))
+  df <- as.data.frame(data)
+  df$T_obs  <- df[[event_col]]
+  df$Y_obs  <- df[[count_col]]
+  df$pat_id <- df[[id_col]]
+  df$k_idx  <- df[[time_col]]
 
-  event_col <- all.vars(formula_T)[1]
-  count_col <- all.vars(formula_Y)[1]
+  df$A <- df[[treat_col]]
 
-  if (!(event_col %in% names(data))) stop("Event column '", event_col, "' not found in data")
-  if (!(count_col %in% names(data))) stop("Count column '", count_col, "' not found in data")
+  if (is.null(lag_col)) {
+    lag_col <- "lagYk"
+    df[[lag_col]] <- 0
+  }
 
-  df <- data.frame(
-    T_obs  = data[[event_col]],
-    Y_obs  = data[[count_col]],
-    pat_id = data[[id_col]],
-    k_idx  = data[[time_col]],
-    A      = data[[treat_col]],
-    stringsAsFactors = FALSE
-  )
-
-  other_cols <- setdiff(names(data), c(event_col, count_col, id_col, time_col, treat_col))
-  df[other_cols] <- data[other_cols]
-
-  prep <- preprocess_data(df, K = K, x_cols = x_cols, lag_col = lag_col)
+  prep <- preprocess_data(df, K = K, lag_col = lag_col)
   df   <- prep$processed_df
   n_pat <- prep$n_pat
 
-  first_obs_idx <- match(unique(df$pat_id), df$pat_id)
-  baseline_df <- df[first_obs_idx, ]
+  k1_mask   <- df$k_idx == 1
+  df_Y1     <- df[k1_mask, ]
+  df_Yk     <- df[!k1_mask, ]
 
-  get_X <- function(d) {
-    if (is.null(x_cols) || length(x_cols) == 0) return(matrix(0, nrow(d), 0))
-    mm <- model.matrix(stats::reformulate(x_cols, intercept = FALSE), data = d)
+  NTk <- nrow(df)
+  NY1 <- nrow(df_Y1)
+  NYk <- nrow(df_Yk)
+
+  P      <- 0
+  X_all  <- matrix(0, NTk, 0)
+  X_base <- matrix(0, NY1, 0)
+  L_Yk   <- matrix(0, NYk, 0)
+
+  get_rhs <- function(f) attr(terms(f), "term.labels") %||% character(0)
+  tv_terms_T <- setdiff(get_rhs(formula_T), treat_col)
+  tv_terms_Y <- setdiff(get_rhs(formula_Y), treat_col)
+
+  build_mm <- function(rhs, d) {
+    if (length(rhs) == 0) return(matrix(0, nrow(d), 0))
+    mm <- model.matrix(reformulate(rhs, intercept = FALSE), d, na.action = na.pass)
+    mm[is.na(mm)] <- 0
     storage.mode(mm) <- "double"
     mm
   }
-  X_base <- get_X(baseline_df)
-  P <- ncol(X_base)
-
-  if (P > 0) {
-    X_all <- X_base[df$pat_id, , drop = FALSE]
-  } else {
-    X_all <- matrix(0, nrow(df), 0)
-  }
-
-  k1_mask <- df$k_idx == 1
-  kgt1_mask <- df$k_idx > 1
-
-  df_Y1 <- df[k1_mask, ]
-  df_Yk <- df[kgt1_mask, ]
-  NTk <- nrow(df); NY1 <- sum(k1_mask); NYk <- sum(kgt1_mask)
-
-  get_rhs_terms <- function(f) {
-    tl <- attr(stats::terms(f), "term.labels")
-    if (is.null(tl)) character(0) else tl
-  }
-  terms_T <- get_rhs_terms(formula_T)
-  terms_Y <- get_rhs_terms(formula_Y)
-  drop_set <- unique(c(x_cols, treat_col))
-  tv_terms_T <- setdiff(terms_T, drop_set)
-  tv_terms_Y <- setdiff(terms_Y, drop_set)
-
-  build_mm_safe <- function(rhs_terms, d) {
-    if (length(rhs_terms) == 0) {
-      return(matrix(0, nrow(d), 0, dimnames = list(NULL, character(0))))
-    }
-
-    tryCatch({
-      formula_obj <- stats::reformulate(rhs_terms, intercept = FALSE)
-      mm <- model.matrix(formula_obj, data = d, na.action = na.pass)
-
-      if (anyNA(mm)) {
-        mm[is.na(mm)] <- 0
-      }
-
-      storage.mode(mm) <- "double"
-      mm
-    }, error = function(e) {
-      warning("Error building design matrix for terms: ", paste(rhs_terms, collapse = ", "),
-              ". Using zero matrix. Error: ", e$message)
-      matrix(0, nrow(d), 0)
-    })
-  }
-
-  Lag_Tk <- build_mm_safe(tv_terms_T, df)
-  Lag_Yk <- build_mm_safe(tv_terms_Y, df_Yk)
-
-  if (nrow(Lag_Tk) != NTk) {
-    stop(sprintf("Dimension mismatch: Lag_Tk has %d rows but expected %d",
-                 nrow(Lag_Tk), NTk))
-  }
-  if (nrow(Lag_Yk) != NYk) {
-    stop(sprintf("Dimension mismatch: Lag_Yk has %d rows but expected %d",
-                 nrow(Lag_Yk), NYk))
-  }
+  Lag_Tk <- build_mm(tv_terms_T, df)
+  Lag_Yk <- build_mm(tv_terms_Y, df_Yk)
 
   QlagT <- ncol(Lag_Tk)
   QlagY <- ncol(Lag_Yk)
 
-
-  L_Yk <- if (P > 0) X_base[df_Yk$pat_id, , drop = FALSE] else matrix(0, NYk, 0)
+  prior_def <- list(
+    eta_beta = 0,  sigma_beta = 1,  rho_beta = 0,
+    eta_gamma = 0, sigma_gamma = 1, rho_gamma = 0,
+    sigma_beta1 = 1,
+    sigma_theta1 = 1,
+    sigma_theta_lag = 1
+  )
+  prior_use <- modifyList(prior_def, prior)
 
   stan_data <- list(
-    NY1 = as.integer(NY1),
-    NYk = as.integer(NYk),
-    NTk = as.integer(NTk),
-    K = as.integer(K),
-    P = as.integer(P),
+    NY1 = NY1, NYk = NYk, NTk = NTk,
+    K = K, P = P,
 
-    kvecT = as.integer(df$k_idx),
+    kvecT = df$k_idx,
     L_Tk  = X_all,
-    A_Tk  = as.integer(df$A),
-    Tk    = as.integer(df$T_obs),
+    A_Tk  = df$A,
+    Tk    = df$T_obs,
 
-    kvecY = as.integer(df_Yk$k_idx),
+    kvecY = df_Yk$k_idx,
     L_Yk  = L_Yk,
-    A_Yk  = as.integer(df_Yk$A),
-    Yk    = as.integer(df_Yk$Y_obs),
+    A_Yk  = df_Yk$A,
+    Yk    = df_Yk$Y_obs,
 
-    L_Y1  = if (P > 0) X_base else matrix(0, NY1, 0),
-    A_Y1  = if (NY1 > 0) as.integer(df_Y1$A) else integer(0),
-    Y1    = if (NY1 > 0) as.integer(df_Y1$Y_obs) else integer(0),
+    L_Y1 = X_base,
+    A_Y1 = if (NY1) df_Y1$A else integer(0),
+    Y1   = if (NY1) df_Y1$Y_obs else integer(0),
 
-    QlagT = as.integer(QlagT),
-    Lag_Tk = if (QlagT > 0) Lag_Tk else matrix(0, NTk, 0),
-    QlagY = as.integer(QlagY),
-    Lag_Yk = if (QlagY > 0) Lag_Yk else matrix(0, NYk, 0)
+    QlagT  = QlagT,
+    Lag_Tk = if (QlagT) Lag_Tk else matrix(0, NTk, 0),
+    QlagY  = QlagY,
+    Lag_Yk = if (QlagY) Lag_Yk else matrix(0, NYk, 0),
+
+    eta_beta = prior_use$eta_beta,
+    sigma_beta = prior_use$sigma_beta,
+    rho_beta = prior_use$rho_beta,
+    eta_gamma = prior_use$eta_gamma,
+    sigma_gamma = prior_use$sigma_gamma,
+    rho_gamma = prior_use$rho_gamma,
+    sigma_beta1 = prior_use$sigma_beta1,
+    sigma_theta1 = prior_use$sigma_theta1,
+    sigma_theta_lag = prior_use$sigma_theta_lag
   )
 
-  if (is.null(stan_model_file)) {
-    pkg_dir <- system.file(package = "BayCauRETM")
-    stan_model_file <- file.path(pkg_dir, "stan", "causal_recur_model.stan")
-  }
+  if (!file.exists(stan_model_file))
+    stop("Stan model file doesn't exist: ", stan_model_file)
 
-  if (!is.null(compiled_model_cache) && file.exists(compiled_model_cache)) {
-    if (verbose) message("Loading cached compiled Stan model...")
-    stan_mod <- readRDS(compiled_model_cache)
-  } else {
-    if (verbose) message("Compiling Stan model...")
-    stan_mod <- rstan::stan_model(stan_model_file, verbose = FALSE)
-    if (!is.null(compiled_model_cache)) {
-      dir.create(dirname(compiled_model_cache), recursive = TRUE, showWarnings = FALSE)
-      saveRDS(stan_mod, compiled_model_cache)
-    }
-  }
+  if (verbose) message("Loading pre-compiled Stan model...")
+  stan_mod <- readRDS(stan_model_file)
 
-  if (verbose) {
-    message(sprintf("Sampling (%d chains × %d iter, cores=%d)...",
-                    num_chains, iter, cores))
-  }
+  if (verbose) message(sprintf("Sampling (%d chains × %d iter, cores=%d)...",
+                               num_chains, iter, cores))
 
   stan_fit <- rstan::sampling(
     stan_mod, data = stan_data,
     chains = num_chains, iter = iter,
-    cores = cores,
-    seed = 1234, control = control
+    cores = cores, seed = 1234,
+    control = control
   )
 
   structure(
-    list(stan_fit          = stan_fit,
-         data_preprocessed = df,
-         n_pat             = n_pat,
-         K                 = K,
-         design_info       = list(formula_T = formula_T,
-                                  formula_Y = formula_Y,
-                                  covariate_names = colnames(X_base)),
-         prior             = prior,
-         stan_data_list    = stan_data),
-    class = "causal_recur_fit"
+    list(
+      stan_fit          = stan_fit,
+      data_preprocessed = df,
+      n_pat             = n_pat,
+      K                 = K,
+      design_info       = list(
+        formula_T   = formula_T,
+        formula_Y   = formula_Y,
+        covariate_names = character(0),
+        treat_col   = treat_col
+      ),
+      prior             = prior_use,
+      stan_data_list    = stan_data
+    ),
+    class = c("causal_recur_fit", "list")
   )
 }
+
+
 
 
 

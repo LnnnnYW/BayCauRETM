@@ -47,18 +47,19 @@
 #' @docType class
 #' @export
 mcmc_diagnosis <- function(fit_out,
-                           pars_to_check  = c("beta0", "theta0", "beta1", "theta1", "thetaLag"),
+                           pars_to_check = c("beta0", "theta0", "beta1", "theta1", "thetaLag"),
                            save_plots     = FALSE,
                            plot_prefix    = "traceplot_",
                            positivity     = FALSE,
                            ps_covariates  = NULL) {
 
-  if (!inherits(fit_out, "list") || is.null(fit_out$stan_fit))
-    stop("fit_out must be a list with a valid 'stan_fit' (rstan::stanfit object)")
+  if (inherits(fit_out, "causal_recur_fit"))
+    fit_out <- unclass(fit_out)
 
   stan_fit <- fit_out$stan_fit
-  if (!inherits(stan_fit, "stanfit"))
-    stop("fit_out$stan_fit must be a valid 'stanfit' object")
+
+  if (!("stan_fit" %in% names(fit_out)) || !inherits(fit_out$stan_fit, "stanfit"))
+    stop("input must contain a valid 'stan_fit' (rstan::stanfit object)")
 
   stan_pars <- names(rstan::extract(stan_fit))
   use_pars  <- intersect(pars_to_check, stan_pars)

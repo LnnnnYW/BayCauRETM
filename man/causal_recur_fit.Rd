@@ -15,25 +15,23 @@ fit_causal_recur(
   id_col,
   time_col,
   treat_col,
-  x_cols = NULL,
-  lagYK,
   formula_T,
   formula_Y,
   prior,
   num_chains = 4,
   iter = 2000,
-  stan_model_file = NULL,
-  compiled_model_cache = NULL,
+  stan_model_file = "inst/stan/causal_recur_model.rds",
   control = list(adapt_delta = 0.95, max_treedepth = 15),
   cores = 1,
-  verbose = TRUE
+  verbose = TRUE,
+  lag_col = NULL
 )
 
 \method{print}{causal_recur_fit}(x, ...)
 
 \method{summary}{causal_recur_fit}(
   object,
-  pars_to_report = c("beta1", "theta1", "theta_lag", "betaL[1]", "thetaL[1]"),
+  pars_to_report = c("beta1", "theta1", "thetaLag", "betaL[1]", "thetaL[1]"),
   ...
 )
 
@@ -54,9 +52,6 @@ index} (\verb{1,...,K}).}
 
 \item{treat_col}{Character scalar. Column name holding the \strong{treatment
 indicator} (\code{0/1}).}
-
-\item{x_cols}{Character vector of additional (static or time‑varying)
-covariate names to keep; \code{NULL} if none.}
 
 \item{formula_T}{A formula for the terminal‑event (death) sub‑model, e.g.
 \code{death_flag ~ Y_prev + A + k_idx}.}
@@ -83,6 +78,9 @@ If \code{NULL}, the package‑internal teacher‑style model is used.}
 \item{x}{an object used to select a method.}
 
 \item{...}{further arguments passed to or from other methods.}
+
+\item{x_cols}{Character vector of additional (static or time‑varying)
+covariate names to keep; \code{NULL} if none.}
 }
 \value{
 An object of class \code{causal_recur_fit} (list) with elements
