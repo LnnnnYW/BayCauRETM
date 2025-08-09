@@ -1,0 +1,33 @@
+Package: BayCauRETM
+Title: Bayesian Causal Analysis of Recurrent and Terminal Events
+Version: 0.0.0.9000
+Authors@R: c(person('Yuqin', 'Wang', role=c('aut', 'cre'),
+  email='yuqin_wang@brown.edu'),
+  person('Arman', 'Oganisian', role='aut'))
+Author: Yuqin Wang [aut, cre],
+  Arman Oganisian [aut]
+Maintainer: Yuqin Wang <yuqin_wang@brown.edu>
+Description: Implements the Bayesian framework of Oganisian et al. (2024) for causal inference with recurrent-event outcomes subject to a terminating event (e.g., death) and timing mis-alignment between eligibility and treatment initiation. Functions preprocess long-format data, fit a joint discrete-time hazard/count model in Stan with autoregressive priors, and apply g-computation to estimate marginal causal incidence-rate contrasts under hypothetical treatment-switching strategies. Utilities provide MCMC and positivity diagnostics, switching-probability summaries, effect curves, and publication-ready plots. Suitable for observational studies with right-censoring, time-varying confounding, and sparse late-follow-up intervals.
+License: MIT + file LICENSE
+Depends: R (>= 4.3)
+Encoding: UTF-8
+Imports:
+    rstan,
+    dplyr,
+    ggplot2,
+    bayesplot,
+    stats,
+    magrittr,
+    rlang,
+    gt,
+    knitr,
+    plotly,
+    tidyr,
+    writexl
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.2
+Suggests: 
+    testthat (>= 3.0.0), withr, covr
+Config/testthat/edition: 3
+URL: https://github.com/LnnnnYW/BayCauRETM
+BugReports: https://github.com/LnnnnYW/BayCauRETM/issues
