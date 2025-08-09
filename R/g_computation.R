@@ -72,15 +72,25 @@ g_computation <- function(Lmat = NULL,
   if (is.null(Lmat)) {
     df_all <- fit_out$data_preprocessed
 
-    id_col   <- if (!is.null(fit_out$design_info$id_col))   fit_out$design_info$id_col
-    else if ("pat_id" %in% names(df_all))       "pat_id"
-    else if ("id" %in% names(df_all))           "id"
-    else stop("Cannot infer id column. Please supply Lmat explicitly.")
+    id_col <- if (!is.null(fit_out$design_info$id_col)) {
+      fit_out$design_info$id_col
+    } else if ("pat_id" %in% names(df_all)) {
+      "pat_id"
+    } else if ("id" %in% names(df_all)) {
+      "id"
+    } else {
+      stop("Cannot infer id column; please supply Lmat explicitly.")
+    }
 
-    time_col <- if (!is.null(fit_out$design_info$time_col)) fit_out$design_info$time_col
-    else if ("k_idx" %in% names(df_all))        "k_idx"
-    else if ("k" %in% names(df_all))            "k"
-    else stop("Cannot infer time column. Please supply Lmat explicitly.")
+    time_col <- if (!is.null(fit_out$design_info$time_col)) {
+      fit_out$design_info$time_col
+    } else if ("k_idx" %in% names(df_all)) {
+      "k_idx"
+    } else if ("k" %in% names(df_all)) {
+      "k"
+    } else {
+      stop("Cannot infer time column; please supply Lmat explicitly.")
+    }
 
     baseline_df <- df_all |>
       dplyr::group_by(.data[[id_col]]) |>
@@ -165,7 +175,7 @@ g_computation <- function(Lmat = NULL,
     rowMeans(ir, na.rm = TRUE)
   }
 
-  # Dirichlet re-weight
+  ## Dirichlet Weights
   W      <- matrix(stats::rgamma(ndraws * n_pat, 1, 1), ndraws, n_pat)
   pi_mat <- W / rowSums(W)
 
@@ -203,6 +213,7 @@ g_computation <- function(Lmat = NULL,
     out_mat * pi_mat     # Dirichlet re-weight
   })
 
+  R_mat <- do.call(rbind, lapply(R_mat_list, rowSums))
   R_mat <- do.call(cbind, lapply(R_mat_list, rowSums))
   colnames(R_mat) <- c(paste0("s=", s_vec), paste0("s=", K + 1))
 
@@ -219,7 +230,6 @@ g_computation <- function(Lmat = NULL,
   structure(list(R_mat = R_mat, delta = delta),
             class = "gcomp_out")
 }
-
 
 
 

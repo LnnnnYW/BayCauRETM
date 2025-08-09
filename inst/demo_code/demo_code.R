@@ -65,19 +65,15 @@ baseline_df <- fit$data_preprocessed %>%
   arrange(pat_id) %>%
   ungroup()
 
-# set it into gcomp
-rhs_terms <- stats::delete.response(stats::terms(fit$design_info$formula_T))
-Lmat <- model.matrix(rhs_terms, data = baseline_df)
-Lmat <- Lmat[, colnames(Lmat) != "(Intercept)", drop = FALSE]
-
 # 4) g-computation
 message("Running g-computation...")
 gcomp <- g_computation(
-  Lmat, fit,
-  s_vec = s_vec,
-  B     = B,
-  cores = cores
+  fit_out = fit,
+  s_vec   = s_vec,
+  B       = B,
+  cores   = cores
 )
+
 print(gcomp)
 plot(gcomp, ref_line = 0)
 plot(gcomp, interactive = TRUE, ref_line = 0)
