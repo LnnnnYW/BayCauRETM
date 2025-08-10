@@ -1,42 +1,39 @@
-#' Posterior Causal Contrast delta(s, K + 1) - Static Wrapper
+#' Posterior causal contrast delta(s, K+1) - static wrapper
 #'
 #' @description
 #' Produce a static **ggplot2** figure of the posterior causal contrast
-#' \eqn{\Delta(s,\,K+1)} against treatment–start interval \eqn{s}, for one or
-#' multiple scenarios produced by \code{\link{g_computation}}.
+#' `delta(s, K+1)` against the treatment-start interval `s` for one or multiple
+#' scenarios produced by [g_computation()].
 #'
-#' @param contrast_list Either a single \code{gcomp_out} object or **named** list
-#'   of such objects to compare several scenarios side-by-side.
-#' @param s_vec Integer vector of start intervals to include.  If \code{NULL}
-#'   (default) all intervals contained in \code{$delta} are plotted.
-#' @param theme_fn A ggplot2 theme function (default
-#'   \code{ggplot2::theme_minimal}).
-#' @param line_size Numeric; width of mean line (default 1).
-#' @param ribbon_alpha Numeric in 0 to 1; transparency of credible-interval
-#'   ribbons (default 0.3).
-#' @param show_points Logical; draw points at each \eqn{s}? (default \code{TRUE}).
-#' @param label_points Logical; annotate mean value at points? (default \code{FALSE}).
-#' @param ref_line Numeric or \code{NULL}; if numeric, draws a horizontal dashed
-#'   line at that \emph{y}.  Typical use \code{ref_line = 0}.
+#' @param contrast_list Either a single `gcomp_out` object or a **named** list
+#'   of such objects to compare multiple scenarios side by side.
+#' @param s_vec Integer vector of start intervals to include. If `NULL`
+#'   (default), all intervals contained in `$delta` are plotted.
+#' @param theme_fn A ggplot2 theme function (default `ggplot2::theme_minimal`).
+#' @param point_size Numeric; size of point markers (default `3`).
+#' @param error_width Numeric; width of error bars (default `0.15`).
+#' @param ref_line Numeric or `NULL`; if numeric, draws a horizontal dashed
+#'   line at that y-value (typical use `ref_line = 0`).
+#' @param ... Additional styling options forwarded to the underlying geoms and
+#'   helpers (e.g., `line_size`, `ribbon_alpha`, `show_points`, `label_points`).
 #'
-#' @return A \link[ggplot2]{ggplot} object.
+#' @return A [ggplot2::ggplot] object.
 #' @export
 #'
 #' @examples
 #' \dontrun{
-#' # single scenario
-#' p <- plot_posterior_causal_contrast_static(gcomp_out, s_vec = 1:K, ref_line = 0)
-#' print(p)
-#'
-#' # two scenarios
-#' p2 <- plot_posterior_causal_contrast_static(
-#'   list(adj = g_adj, unadj = g_unadj), s_vec = 1:K, show_points = TRUE
+#' p <- plot_posterior_causal_contrast_static(
+#'   contrast_list = gcomp_out,
+#'   s_vec = 1:K,
+#'   ref_line = 0
 #' )
+#' print(p)
 #' }
 #'
 #' @importFrom dplyr bind_rows
 #' @importFrom ggplot2 ggplot aes geom_hline geom_ribbon geom_line geom_point
 #'   geom_text labs theme position_dodge theme_minimal
+
 
 
 plot_posterior_causal_contrast_static <- function(contrast_list,

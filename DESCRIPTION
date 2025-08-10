@@ -17,12 +17,10 @@ Imports:
     ggplot2,
     bayesplot,
     stats,
-    magrittr,
     rlang,
     gt,
     knitr,
     plotly,
-    tidyr,
     writexl
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.2

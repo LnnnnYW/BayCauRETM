@@ -7,7 +7,7 @@
 \alias{print.mcmc_diag}
 \alias{summary.mcmc_diag}
 \alias{plot.mcmc_diag}
-\title{MCMC Convergence and Positivity Diagnostics}
+\title{MCMC convergence and positivity diagnostics}
 \usage{
 mcmc_diagnosis(
   fit_out,
@@ -25,59 +25,57 @@ mcmc_diagnosis(
 \method{plot}{mcmc_diag}(x, pars = NULL, ...)
 }
 \arguments{
-\item{fit_out}{Output list from \code{\link[=fit_causal_recur]{fit_causal_recur()}}, containing at least
-\code{stan_fit} (an \strong{rstan} \code{stanfit} object) and — if \code{positivity = TRUE} —
-\code{data_preprocessed}.}
+\item{fit_out}{Output list from \code{fit_causal_recur()}, containing \code{stan_fit}
+(an rstan \code{stanfit} object) and, if \code{positivity = TRUE}, \code{data_preprocessed}.}
 
-\item{pars_to_check}{Character vector of parameter‑name patterns to diagnose.
-\strong{Defaults have been updated for the teacher‑style model:}
-\code{c("beta0", "theta0", "beta1", "theta1", "theta_lag")}.
-Patterns are passed to \strong{bayesplot}’s \code{mcmc_trace()}.}
+\item{pars_to_check}{Character vector of parameter-name patterns to diagnose
+(patterns are passed to \code{bayesplot::mcmc_trace()}).}
 
-\item{save_plots}{Logical; if \code{TRUE}, saves each trace‑plot as a PNG file
-using \code{plot_prefix}.}
+\item{save_plots}{Logical; if \code{TRUE}, save each trace plot as a PNG using \code{plot_prefix}.}
 
-\item{plot_prefix}{Filename prefix for saved plots (default: \code{"traceplot_"}).}
+\item{plot_prefix}{Filename prefix for saved plots (default \code{"traceplot_"}).}
 
-\item{positivity}{Logical; if \code{TRUE}, perform additional positivity
-diagnostics on treatment assignment (default \code{FALSE}).}
+\item{positivity}{Logical; if \code{TRUE}, run an additional logistic-regression
+propensity-score check (default \code{FALSE}).}
 
-\item{x}{an object used to select a method.}
+\item{ps_covariates}{Character vector of column names used in the positivity
+model (required when \code{positivity = TRUE}).}
 
-\item{...}{further arguments passed to or from other methods.}
+\item{x}{An \code{mcmc_diag} object.}
+
+\item{...}{Additional arguments (ignored).}
+
+\item{object}{An \code{mcmc_diag} object.}
+
+\item{pars}{Optional character vector of parameter names to display.}
 }
 \value{
-An object of class \code{mcmc_diag}, a list with components:
+An object of class \code{mcmc_diag}, a list with:
 \itemize{
-\item \strong{stats} —data frame with \code{Parameter}, \code{n_eff}, and \code{Rhat}.
-\item \strong{plots} —named list of ggplot objects for the trace‑plots.
+\item \code{stats} — data frame with \code{Parameter}, \code{n_eff}, and \code{Rhat};
+\item \code{plots} — named list of ggplot objects for the trace plots.
 }
 }
 \description{
-Summarize MCMC convergence for a fitted model (R‑hat and effective sample
-size), generate trace‑plots for specified parameters, and optionally perform
-positivity (overlap) diagnostics on treatment assignment.
-}
-\details{
-If \code{positivity = TRUE}, a logistic regression of treatment \code{A} on history
-(\code{Y_prev}, \code{k_idx}) plus any extra covariates is fitted using the
-pre‑processed data. Propensity‑score summaries and a histogram are produced.
+Summarize MCMC convergence for a fitted model (R-hat and effective sample
+size), generate trace plots for selected parameters via
+\code{bayesplot::mcmc_trace()}, and optionally perform positivity diagnostics
+for treatment assignment.
 }
 \section{Methods (by generic)}{
 \itemize{
-\item \code{print(mcmc_diag)}: Print the table of MCMC convergence statistics (R‑hat & n_eff).
+\item \code{print(mcmc_diag)}: Print the table of MCMC convergence statistics (R-hat & n_eff).
 
-\item \code{summary(mcmc_diag)}: Same as \code{print()} for a \code{mcmc_diag} object.
+\item \code{summary(mcmc_diag)}: Same as \code{print()} for an \code{mcmc_diag} object.
 
-\item \code{plot(mcmc_diag)}: Display stored trace‑plots; optionally filter by \code{pars}.
+\item \code{plot(mcmc_diag)}: Display stored trace plots; optionally filter by \code{pars}.
 
 }}
 \examples{
 \dontrun{
-fit_out <- fit_causal_recur(...)
-diag <- mcmc_diagnosis(fit_out, positivity = TRUE)
-print(diag)
-plot(diag, pars = "beta1")
+# diag <- mcmc_diagnosis(fit_out, pars_to_check = c("beta0","theta0"))
+# print(diag)
+# plot(diag, pars = "beta0")
 }
 
 }

@@ -1,39 +1,37 @@
-# R/result_summary_table
-
-#' Summarise posterior parameters & g-computation contrasts
+#' Summarize posterior parameters and g-computation contrasts
 #'
 #' @description
-#' Extracts posterior summaries from a Stan fit (**fit_out**) and
-#' causal contrasts Δ(s, K+1) from a **gcomp_out**, then merges them into
-#' a single object that can be printed, exported, or rendered with
-#' **knitr** / **gt**.
+#' Extract posterior summaries from a Stan fit (`fit_out`) and causal contrasts
+#' `delta(s, K+1)` from a `gcomp_out`, then merge them into a single result that
+#' can be printed, exported, or rendered with **knitr**/**gt**.
 #'
-#' @param fit_out   Output list of [fit_causal_recur()].
-#' @param gcomp_out Output list of [g_computation()].
-#' @param pars_to_report Character; Stan parameter names to keep.
-#' @param s_vec     Integer vector of start intervals to keep.
-#'                  `NULL` = all available.
-#' @param filter_pars Optional tidy‐expression to filter the parameter table
-#'                    (e.g. `Mean > 0 & Rhat < 1.1`).
-#' @param sort_by   Column to sort the parameter table by.
-#' @param sort_desc Logical; descending sort?
-#' @param format    `"data.frame"`, `"kable"`, or `"gt"`.
-#' @param export_file Optional path; if given, writes CSV / XLSX export.
-#' @param object Object returned by this function (used by summary method).
-#' @inheritParams base::print
-#' @return A **result_summary_table** object (see `print()` method).
+#' @param fit_out Output list from [fit_causal_recur()].
+#' @param gcomp_out Output list from [g_computation()].
+#' @param pars_to_report Character vector. Stan parameter names or simple patterns
+#'   to keep.
+#' @param s_vec Integer vector of start intervals to keep. If `NULL`, all available
+#'   intervals in `gcomp_out$delta` are used.
+#' @param filter_pars Optional filter for the parameter table. If a character
+#'   vector, it is treated as a regex pattern applied to `Parameter`. Otherwise,
+#'   a tidy-style expression is captured and evaluated via `dplyr::filter()`.
+#' @param sort_by Column name to sort the parameter table by.
+#' @param sort_desc Logical. Sort descending? Default `TRUE`.
+#' @param format One of `"data.frame"`, `"kable"`, or `"gt"`.
+#' @param export_file Optional file path. If supplied, writes CSV/XLSX export.
+#'
+#' @return A `result_summary_table` object; see `print()` for display.
 #'
 #' @seealso [print.result_summary_table()], [g_computation()],
 #'   [plot_posterior_causal_contrast_static()].
-#'
 #' @examples
 #' \dontrun{
-#' res <- result_summary_table(fit_out, gcomp_out,
-#'                             pars_to_report = c("beta_Y","beta_A"),
-#'                             s_vec = 1:5, format = "kable")
-#' print(res)   # pretty table
+#' res <- result_summary_table(
+#'   fit_out, gcomp_out,
+#'   pars_to_report = c("beta_Y","beta_A"),
+#'   s_vec = 1:5, format = "kable"
+#' )
+#' print(res)
 #' }
-#'
 #' @importFrom rstan summary
 #' @importFrom dplyr filter arrange desc
 #' @importFrom knitr kable
@@ -42,7 +40,6 @@
 #' @importFrom utils write.csv
 #' @importFrom rlang enquo
 #' @export
-
 
 result_summary_table <- function(fit_out,
                                  gcomp_out,
@@ -185,13 +182,12 @@ result_summary_table <- function(fit_out,
 
 
 #' @describeIn result_summary_table Formatted console/knitr/gt output of the two summary tables.
-#' @param object A \code{result_summary_table} object (output of
-#'   \code{result_summary_table()}).
-#' @param ...    Ignored; present for S3 consistency.
-#'
-#' @return \code{object}, invisibly.
+#' @param x A `result_summary_table` object (output of `result_summary_table()`).
+#' @param ... Ignored; present for S3 consistency.
+#' @return `x`, invisibly.
 #' @method print result_summary_table
 #' @export
+
 print.result_summary_table <- function(x, ...) {
   if (inherits(x$param_table, "knitr_kable") ||
       inherits(x$param_table, "gt_tbl")) {
@@ -211,9 +207,13 @@ print.result_summary_table <- function(x, ...) {
   invisible(x)
 }
 
-#' @describeIn result_summary_table Alias for print.
+#' @describeIn result_summary_table Alias for `print()`.
+#' @param object A `result_summary_table` object.
+#' @param ... Ignored; present for S3 consistency.
+#' @return `object`, invisibly.
 #' @method summary result_summary_table
 #' @export
+
 summary.result_summary_table <- function(object, ...) {
   print(object)
   invisible(object)

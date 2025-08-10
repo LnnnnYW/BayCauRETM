@@ -2,40 +2,53 @@ utils::globalVariables(c(
   "Y_prev", "A", "s", "Mean", "CI_low", "CI_high",
   "k_idx", "pat_id", "T_obs",
   "Y_obs", "T_prev", "n", "hazard", "surv_prob",
-  "switch_prob", ".data", "scenario", "lower", "upper", "lagY_bin"
+  "switch_prob", ".data", "scenario", "lower", "upper", "lagY_bin",
+  "p25", "p75"
 ))
 
-#' Preprocess Long‑Format Data for Causal Recurrent‑Event Modeling
+#' Preprocess Long-Format Data (ordering, ID remapping, optional lag creation)
 #'
-#' Prepares a long‑format dataset (already using standardised column names) for
-#' discrete‑time Bayesian causal modelling of recurrent and terminal events.
+#' Prepares a long-format dataset that already follows the standard column
+#' names for downstream discrete-time causal modeling. This lightweight
+#' preprocessor currently performs ordering, subject-ID normalization, basic
+#' input checks, and (optionally) the creation of a user-named lag indicator
+#' derived from `Y_obs`.
 #'
-#' @param df A *long‑format* `data.frame` that **already contains** the analysis
-#'        columns `pat_id`, `k_idx`, `Y_obs`, `T_obs`, `A`, plus any additional
-#'        covariates.
-#' @param K  Integer. Total number of discrete intervals per subject.
-#' @param x_cols Character vector of additional covariate column names, or `NULL`.
+#' @param df A *long-format* `data.frame` that **already contains** the analysis
+#'        columns `pat_id`, `k_idx`, `Y_obs`, `T_obs`, and `A`, plus any
+#'        additional covariates.
+#' @param K  Integer. Total number of discrete intervals per subject. Validated
+#'        for correctness but **not** used to pad/expand the data in the current
+#'        implementation.
+#' @param lag_col Character scalar or `NULL`. If provided and the column is
+#'        **absent** in `df`, the function auto-generates it as an integer
+#'        indicator based on the subject-specific lag of `I(Y_obs > 0)`. If the
+#'        named column already exists, it is left unchanged.
 #'
 #' @return A list with components:
-#'   * **processed_df** – The input data with filled‑in intervals, lagged
-#'     variables `Y_prev`/`T_prev`, a binary `lagY_bin`, and post‑death rows
-#'     removed.
-#'   * **n_pat** – Integer, number of unique subjects.
+#'   * **processed_df** - The input data sorted by `pat_id` and `k_idx`, with
+#'     `pat_id` remapped to consecutive integers `1:n_pat` and, if requested and
+#'     missing, a new `lag_col` created from `lag(I(Y_obs > 0))` within subject.
+#'   * **n_pat** - Integer, number of unique subjects (after remapping).
 #'
 #' @details
-#' * Fills every subject’s record to the full grid `k_idx = 1:K`;
-#' * Carries treatment status `A` forward in time (`tidyr::fill(direction = "down")`);
-#' * Removes all rows **after** the first `T_obs == 1` to ensure monotone
-#'   terminal indicators;
-#' * Creates `T_prev`, `Y_prev`, and a helper indicator `lagY_bin = I(Y_prev > 0)`;
-#' * Runs basic validity checks (duplicate `(pat_id,k_idx)`, coding, ranges, missing values).
-#' The data **must already** follow the naming convention `*_obs` for observed
-#' quantities. The function does *not* rename columns – it only pads, truncates,
-#' lags, and validates.
+#' * Validates inputs: `df` must be a `data.frame`; `K` must be a single numeric
+#'   value `>= 1`; `lag_col` (if not `NULL`) must be a single character string.
+#' * Checks that required columns `pat_id`, `k_idx`, `Y_obs`, `T_obs`, `A`
+#'   exist; otherwise the function errors.
+#' * Sorts rows by `pat_id`, then `k_idx`.
+#' * Remaps (normalizes) `pat_id` to consecutive integers `1, 2, ..., n_pat`
+#'   while preserving subject grouping.
+#' * If `lag_col` is provided **and not found** in `df`, creates it as:
+#'   `as.integer(lag(I(Y_obs > 0)))` computed **within each subject**; the first
+#'   row of each subject receives `0`. Existing `lag_col` is respected.
+#' * **Does not** pad to a full grid `k_idx = 1:K`, **does not** carry forward
+#'   treatment, **does not** truncate rows after terminal events, and **does not**
+#'   create `T_prev` or `Y_prev`. Column names are not changed.
 #'
 #' @examples
 #' df_long <- data.frame(
-#'   pat_id = rep(1:5, each = 3),
+#'   pat_id = rep(c("S1","S2","S3","S4","S5"), each = 3),
 #'   k_idx  = rep(1:3, times = 5),
 #'   Y_obs  = sample(0:2, 15, TRUE),
 #'   T_obs  = rbinom(15, 1, 0.1),
@@ -43,15 +56,17 @@ utils::globalVariables(c(
 #'   age    = rnorm(15, 60, 10)
 #' )
 #' \dontrun{
-#' out <- preprocess_data(df_long, K = 3, x_cols = "age")
+#' # Request creation of a missing lag column based on lagged I(Y_obs > 0)
+#' out <- preprocess_data(df_long, K = 3, lag_col = "lagY_bin")
 #' str(out)
+#' head(out$processed_df)
+#' table(out$processed_df$lagY_bin)
 #' }
 #'
-#' @importFrom magrittr %>%
-#' @importFrom dplyr arrange mutate group_by ungroup count filter select all_of
-#' @importFrom tidyr complete fill
+#' @importFrom stats setNames
 #' @keywords internal
 #' @noRd
+
 
 preprocess_data <- function(df, K, lag_col = NULL) {
   stopifnot(is.data.frame(df))

@@ -2,7 +2,7 @@
 % Please edit documentation in R/propensity_score_diagnostics.R
 \name{propensity_score_diagnostics}
 \alias{propensity_score_diagnostics}
-\title{Propensity Score Diagnostics}
+\title{Propensity score diagnostics}
 \usage{
 propensity_score_diagnostics(
   data,
@@ -17,45 +17,60 @@ propensity_score_diagnostics(
 \arguments{
 \item{data}{A \code{data.frame} containing the treatment column and covariates.}
 
-\item{treat_col}{Character. Name of the binary treatment column (0/1 or factor). Must exist in \code{data}.}
+\item{treat_col}{Character. Name of the binary treatment column (\code{0/1} or factor).
+Must exist in \code{data}.}
 
-\item{covariates}{Character vector. Names of covariate columns to include in the PS model. Must exist in \code{data}.}
+\item{covariates}{Character vector. Names of covariate columns to include in
+the PS model. Must exist in \code{data} (see \code{auto_lag} note above).}
 
-\item{trim}{Numeric vector of length 2. Lower and upper quantile bounds for flagging PS tails.
-For example, \code{c(0.01, 0.99)} flags observations with PS below 1\% or above 99\%. Default is \code{c(0.01, 0.99)}.}
+\item{trim}{Numeric vector of length 2. Lower and upper quantile bounds used
+to flag PS tails. For example, \code{c(0.01, 0.99)} flags observations below the
+1\% or above the 99\% quantile. Default \code{c(0.01, 0.99)}.}
 
-\item{plot_types}{Character vector. Which plots to produce; subset of \code{c("histogram", "density")}.
-Default is \code{c("histogram", "density")}.}
+\item{plot_types}{Character vector. Which plots to produce; subset of
+\code{c("histogram", "density")}. Default \code{c("histogram", "density")}.}
 
-\item{bins}{Integer. Number of bins for the histogram (default: 30).}
+\item{bins}{Integer. Number of bins for the histogram (default \code{30}).}
+
+\item{auto_lag}{Logical. If \code{TRUE}, attempt to auto-create \code{lagYK} as described
+in \strong{Details} when requested by \code{covariates}. Default \code{TRUE}.}
 }
 \value{
-An object of class \code{ps_diag}, a list with components:
-\describe{
-\item{\code{model}}{The fitted \code{glm} object (family = binomial).}
-\item{\code{ps}}{Numeric vector of predicted propensity scores.}
-\item{\code{summary}}{Data frame with \code{stat} (e.g., "min","p_lo","p05","p95","p_hi","max") and \code{value}.}
-\item{\code{trim_flag}}{Logical vector indicating observations with PS outside trimming bounds.}
-\item{\code{plots}}{Named list of \code{ggplot2} objects per requested \code{plot_types}.}
+An object of class \code{ps_diag}, a list with:
+\itemize{
+\item \strong{model} - the fitted \code{glm} object (\code{family = binomial}).
+\item \strong{ps} - numeric vector of predicted propensity scores aligned to \code{data}.
+\item \strong{summary} - data frame with columns \code{stat} (e.g., \code{"min"}, \code{"p_lo"},
+\code{"p05"}, \code{"p95"}, \code{"p_hi"}, \code{"max"}) and \code{value}.
+\item \strong{trim_flag} - logical vector indicating observations outside trimming bounds.
+\item \strong{plots} - named list of \strong{ggplot2} objects for requested \code{plot_types}
+(e.g., \code{"histogram"}, \code{"density"}).
 }
 }
 \description{
-Fit a logistic regression model for treatment assignment to estimate propensity scores,
-provide numerical summaries, flag extreme values, and generate diagnostic plots.
+Fit a logistic regression model for treatment assignment to estimate propensity
+scores, provide numerical summaries, flag extreme values, and generate
+diagnostic plots.
 }
 \details{
-This function performs:
+The function:
 \enumerate{
-\item Fit a logistic regression via \code{glm(treat ~ covariates, family=binomial)}.
-\item Compute predicted propensity scores (\code{ps}) for all observations.
-\item Summarize key statistics: minimum, trimmed quantile, 5\%/95\%, trimmed upper, maximum.
-\item Flag observations with PS outside trimming bounds (e.g., below lower or above upper quantile).
-\item Generate diagnostic plots:
+\item Fits a logistic regression \code{glm(treat ~ covariates, family = binomial)}.
+\item Computes predicted propensity scores (\code{ps}) for all observations.
+\item Summarizes key statistics: minimum, lower trim quantile, 5\%/95\%, upper trim
+quantile, maximum.
+\item Flags observations with PS outside the trimming bounds.
+\item Builds diagnostic plots:
 \itemize{
 \item Histogram of \code{ps} with vertical lines at trimming and 5\%/95\% cutoffs.
 \item Density curves of \code{ps} by treatment group with the same vertical lines.
 }
 }
+
+If \code{auto_lag = TRUE} and \code{"lagyk"} appears among \code{covariates} (case-insensitive)
+but the corresponding column is missing while \code{pat_id}, \code{k_idx}, and \code{Y_obs}
+exist, a \code{lagYK} column is auto-generated as the within-subject lag of \code{Y_obs}
+ordered by \verb{(pat_id, k_idx)} with \code{0} at each subject's first row.
 }
 \examples{
 \dontrun{

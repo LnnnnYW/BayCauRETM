@@ -1,44 +1,50 @@
-# propensity_score_diagnostics
-
 utils::globalVariables(c("ps", "trim_flag"))
 
-#' Propensity Score Diagnostics
+#' Propensity score diagnostics
 #'
 #' @description
-#' Fit a logistic regression model for treatment assignment to estimate propensity scores,
-#' provide numerical summaries, flag extreme values, and generate diagnostic plots.
+#' Fit a logistic regression model for treatment assignment to estimate propensity
+#' scores, provide numerical summaries, flag extreme values, and generate
+#' diagnostic plots.
 #'
 #' @details
-#' This function performs:
-#' \enumerate{
-#'   \item Fit a logistic regression via \code{glm(treat ~ covariates, family=binomial)}.
-#'   \item Compute predicted propensity scores (\code{ps}) for all observations.
-#'   \item Summarize key statistics: minimum, trimmed quantile, 5%/95%, trimmed upper, maximum.
-#'   \item Flag observations with PS outside trimming bounds (e.g., below lower or above upper quantile).
-#'   \item Generate diagnostic plots:
-#'     \itemize{
-#'       \item Histogram of \code{ps} with vertical lines at trimming and 5%/95% cutoffs.
-#'       \item Density curves of \code{ps} by treatment group with the same vertical lines.
-#'     }
-#' }
+#' The function:
+#' 1. Fits a logistic regression `glm(treat ~ covariates, family = binomial)`.
+#' 2. Computes predicted propensity scores (`ps`) for all observations.
+#' 3. Summarizes key statistics: minimum, lower trim quantile, 5%/95%, upper trim
+#'    quantile, maximum.
+#' 4. Flags observations with PS outside the trimming bounds.
+#' 5. Builds diagnostic plots:
+#'    - Histogram of `ps` with vertical lines at trimming and 5%/95% cutoffs.
+#'    - Density curves of `ps` by treatment group with the same vertical lines.
 #'
-#' @param data A \code{data.frame} containing the treatment column and covariates.
-#' @param treat_col Character. Name of the binary treatment column (0/1 or factor). Must exist in \code{data}.
-#' @param covariates Character vector. Names of covariate columns to include in the PS model. Must exist in \code{data}.
-#' @param trim Numeric vector of length 2. Lower and upper quantile bounds for flagging PS tails.
-#'   For example, \code{c(0.01, 0.99)} flags observations with PS below 1% or above 99%. Default is \code{c(0.01, 0.99)}.
-#' @param plot_types Character vector. Which plots to produce; subset of \code{c("histogram", "density")}.
-#'   Default is \code{c("histogram", "density")}.
-#' @param bins Integer. Number of bins for the histogram (default: 30).
+#' If `auto_lag = TRUE` and `"lagyk"` appears among `covariates` (case-insensitive)
+#' but the corresponding column is missing while `pat_id`, `k_idx`, and `Y_obs`
+#' exist, a `lagYK` column is auto-generated as the within-subject lag of `Y_obs`
+#' ordered by `(pat_id, k_idx)` with `0` at each subject's first row.
 #'
-#' @return An object of class \code{ps_diag}, a list with components:
-#'   \describe{
-#'     \item{\code{model}}{The fitted \code{glm} object (family = binomial).}
-#'     \item{\code{ps}}{Numeric vector of predicted propensity scores.}
-#'     \item{\code{summary}}{Data frame with \code{stat} (e.g., "min","p_lo","p05","p95","p_hi","max") and \code{value}.}
-#'     \item{\code{trim_flag}}{Logical vector indicating observations with PS outside trimming bounds.}
-#'     \item{\code{plots}}{Named list of \code{ggplot2} objects per requested \code{plot_types}.}
-#'   }
+#' @param data A `data.frame` containing the treatment column and covariates.
+#' @param treat_col Character. Name of the binary treatment column (`0/1` or factor).
+#'   Must exist in `data`.
+#' @param covariates Character vector. Names of covariate columns to include in
+#'   the PS model. Must exist in `data` (see `auto_lag` note above).
+#' @param trim Numeric vector of length 2. Lower and upper quantile bounds used
+#'   to flag PS tails. For example, `c(0.01, 0.99)` flags observations below the
+#'   1% or above the 99% quantile. Default `c(0.01, 0.99)`.
+#' @param plot_types Character vector. Which plots to produce; subset of
+#'   `c("histogram", "density")`. Default `c("histogram", "density")`.
+#' @param bins Integer. Number of bins for the histogram (default `30`).
+#' @param auto_lag Logical. If `TRUE`, attempt to auto-create `lagYK` as described
+#'   in **Details** when requested by `covariates`. Default `TRUE`.
+#'
+#' @return An object of class `ps_diag`, a list with:
+#'   * **model** - the fitted `glm` object (`family = binomial`).
+#'   * **ps** - numeric vector of predicted propensity scores aligned to `data`.
+#'   * **summary** - data frame with columns `stat` (e.g., `"min"`, `"p_lo"`,
+#'     `"p05"`, `"p95"`, `"p_hi"`, `"max"`) and `value`.
+#'   * **trim_flag** - logical vector indicating observations outside trimming bounds.
+#'   * **plots** - named list of **ggplot2** objects for requested `plot_types`
+#'     (e.g., `"histogram"`, `"density"`).
 #'
 #' @examples
 #' \dontrun{
@@ -66,6 +72,7 @@ utils::globalVariables(c("ps", "trim_flag"))
 #' @importFrom stats glm predict quantile
 #' @importFrom ggplot2 ggplot aes geom_histogram geom_density geom_vline labs theme element_text scale_color_manual scale_fill_manual
 #' @importFrom dplyr mutate
+
 
 
 propensity_score_diagnostics <- function(data,
@@ -193,18 +200,20 @@ propensity_score_diagnostics <- function(data,
 }
 
 
-
 #' Print method for ps_diag
 #'
 #' @description
-#' Print summary of propensity scores and number of flagged observations.
+#' Print a summary of propensity scores and the number of observations flagged
+#' outside the trimming bounds.
 #'
-#' @param x An object of class \code{ps_diag}.
+#' @param x An object of class `ps_diag`.
 #' @param ... Additional arguments (ignored).
-#' @return Invisibly returns the \code{ps_diag} object.
+#'
+#' @return Invisibly returns the `ps_diag` object.
 #' @rdname ps_diag-print
 #' @method print ps_diag
 #' @export
+
 print.ps_diag <- function(x, ...) {
   cat("Propensity Score Summary:\n")
   print(x$summary)
@@ -216,15 +225,15 @@ print.ps_diag <- function(x, ...) {
 #' Summary method for ps_diag
 #'
 #' @description
-#' Summary for a \code{ps_diag} object; same as \code{print.ps_diag()}.
+#' Summary for a `ps_diag` object; same as `print.ps_diag()`.
 #'
-#' @param object An object of class \code{ps_diag}.
+#' @param object An object of class `ps_diag`.
 #' @param ... Additional arguments (ignored).
-#' @return Invisibly returns the \code{ps_diag} object.
+#'
+#' @return Invisibly returns the `ps_diag` object.
 #' @rdname ps_diag-summary
 #' @method summary ps_diag
 #' @export
-
 
 summary.ps_diag <- function(object, ...) {
   print(object)
@@ -233,15 +242,19 @@ summary.ps_diag <- function(object, ...) {
 #' Plot method for ps_diag
 #'
 #' @description
-#' Plot propensity score diagnostics. User specifies \code{type} as "histogram" or "density".
+#' Plot propensity score diagnostics. The `type` argument selects one of the
+#' available plots in `x$plots` (typically `"histogram"` or `"density"`).
 #'
-#' @param x An object of class \code{ps_diag}.
-#' @param type Character, either "histogram" or "density" (default: both available).
-#' @param ... Additional arguments passed to the underlying ggplot layers (e.g., adjust bins).
+#' @param x An object of class `ps_diag`.
+#' @param type Character. One of `names(x$plots)`; typically `"histogram"` or
+#'   `"density"`.
+#' @param ... Additional arguments passed to the underlying ggplot layers.
+#'
 #' @return Invisibly returns the ggplot object.
 #' @rdname ps_diag-plot
 #' @method plot ps_diag
 #' @export
+
 plot.ps_diag <- function(x, type = c("histogram", "density"), ...) {
   type <- match.arg(type, choices = names(x$plots))
   p <- x$plots[[type]]

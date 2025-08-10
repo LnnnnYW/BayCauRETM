@@ -15,5 +15,6 @@
 Invisibly returns the \code{ps_diag} object.
 }
 \description{
-Print summary of propensity scores and number of flagged observations.
+Print a summary of propensity scores and the number of observations flagged
+outside the trimming bounds.
 }

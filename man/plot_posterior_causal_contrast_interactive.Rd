@@ -2,7 +2,7 @@
 % Please edit documentation in R/plot_posterior_causal_contrast_interactive.R
 \name{plot_posterior_causal_contrast_interactive}
 \alias{plot_posterior_causal_contrast_interactive}
-\title{Posterior Causal Contrast delta(s, K + 1) - Interactive Wrapper}
+\title{Posterior causal contrast delta(s, K+1) - interactive wrapper}
 \usage{
 plot_posterior_causal_contrast_interactive(
   contrast_list,
@@ -20,42 +20,45 @@ plot_posterior_causal_contrast_interactive(
 )
 }
 \arguments{
-\item{contrast_list}{Either a single \code{gcomp_out} object or \strong{named} list
-of such objects to compare several scenarios side-by-side.}
+\item{contrast_list}{Either a single \code{gcomp_out} object or a \strong{named} list
+of such objects to compare multiple scenarios side by side.}
 
-\item{s_vec}{Integer vector of start intervals to include.  If \code{NULL}
-(default) all intervals contained in \code{$delta} are plotted.}
+\item{s_vec}{Integer vector of start intervals to include. If \code{NULL}
+(default), all intervals contained in \verb{$delta} are plotted.}
 
-\item{theme_fn}{A ggplot2 theme function (default
-\code{ggplot2::theme_minimal}).}
+\item{theme_fn}{A ggplot2 theme function (default \code{ggplot2::theme_minimal}).}
+
+\item{point_size}{Numeric; size of point markers (default \code{3}).}
+
+\item{error_width}{Numeric; width of error bars (default \code{0.15}).}
 
 \item{ref_line}{Numeric or \code{NULL}; if numeric, draws a horizontal dashed
-line at that \emph{y}.  Typical use \code{ref_line = 0}.}
+line at that y-value (typical use \code{ref_line = 0}).}
 
-\item{interactive}{Logical; if TRUE return a Plotly object.}
+\item{interactive}{Logical; if \code{TRUE}, return a Plotly object via
+\code{plotly::ggplotly()}.}
 
-\item{save_file}{Optional filename to save static plot (PNG/PDF, etc.).}
+\item{save_file}{Optional file path to save the static ggplot (PNG/PDF, etc.).}
 
-\item{width, height, dpi}{Device settings when saving.}
+\item{width, height, dpi}{Device settings used by \code{ggplot2::ggsave()} when saving.}
 
-\item{line_size}{Numeric; width of the mean line (default 1).}
-
-\item{ribbon_alpha}{Numeric in 0 to 1; transparency of credible-interval}
+\item{...}{Additional styling options forwarded to the underlying geoms and
+helpers (e.g., \code{line_size}, \code{ribbon_alpha}, \code{show_points}, \code{label_points}).}
 }
 \value{
-ggplot or plotly object.
+A ggplot or plotly object.
 }
 \description{
-Convenience wrapper: builds the static plot via
-\code{\link{plot_posterior_causal_contrast_static}}, optionally saves it, and
+Convenience wrapper that builds the static plot via
+\code{\link[=plot_posterior_causal_contrast_static]{plot_posterior_causal_contrast_static()}}, optionally saves it to disk, and
 optionally converts it to an interactive Plotly object.
 }
 \examples{
 \dontrun{
-# interactive plot in RStudio viewer
+# Interactive plot in the viewer
 plot_posterior_causal_contrast_interactive(gcomp_out, interactive = TRUE)
 
-# save static PNG
+# Save a static PNG (the returned value is still a ggplot)
 plot_posterior_causal_contrast_interactive(
   gcomp_out, save_file = "delta_static.png", s_vec = 1:K
 )

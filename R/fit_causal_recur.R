@@ -1,37 +1,49 @@
-# fit_causal_recur
-
-#' Fit Bayesian Causal Recurrent and Terminal‑Event Model
+#' Fit Bayesian Causal Recurrent and Terminal-Event Model
 #'
 #' @description
-#' Fits a discrete‑time Bayesian model for recurrent event counts and a terminal
-#' event (death) using gAR(1) smoothing priors on the time‑varying intercepts.
+#' Fits a discrete-time Bayesian model for recurrent counts and a terminal
+#' event using gAR(1) smoothing priors on time-varying intercepts. This
+#' implementation expects a **pre-compiled** Stan model (`.rds`) and uses
+#' `rstan::sampling()` for MCMC.
 #'
-#' @param data A **long‑format** `data.frame` that contains the user‑named
+#' @param data A **long-format** `data.frame` that contains the user-named
 #'   identifier, time index, treatment, outcome, and any covariate columns.
 #'   These names are supplied via `id_col`, `time_col`, `treat_col`, plus the
-#'   left‑hand sides of `formula_T` and `formula_Y`.
+#'   left-hand sides of `formula_T` and `formula_Y`.
 #' @param K Integer. Total number of discrete intervals in the study.
 #' @param id_col Character scalar. Column name holding the **subject ID**.
 #' @param time_col Character scalar. Column name holding the **discrete time
 #'   index** (`1,...,K`).
 #' @param treat_col Character scalar. Column name holding the **treatment
 #'   indicator** (`0/1`).
-#' @param x_cols Character vector of additional (static or time‑varying)
-#'   covariate names to keep; `NULL` if none.
-#' @param formula_T A formula for the terminal‑event (death) sub‑model, e.g.
-#'   `death_flag ~ Y_prev + A + k_idx`.
-#' @param formula_Y A formula for the recurrent‑count sub‑model, e.g.
-#'   `event_count ~ Y_prev + A + k_idx`.
-#' @param prior Named list of gAR(1) hyperparameters with elements
+#' @param formula_T A formula for the terminal-event (death) sub-model, e.g.
+#'   `death_flag ~ Y_prev + A + k_idx`. The **right-hand side terms excluding
+#'   the treatment column** are used to build a (possibly empty) design matrix
+#'   for time-varying/lagged predictors in the terminal sub-model.
+#' @param formula_Y A formula for the recurrent-count sub-model, e.g.
+#'   `event_count ~ Y_prev + A + k_idx`. The **right-hand side terms excluding
+#'   the treatment column** are used to build a (possibly empty) design matrix
+#'   for the recurrent sub-model (for `k_idx > 1` rows).
+#' @param prior Named list of gAR(1) hyperparameters. Supported elements:
 #'   `eta_beta`, `sigma_beta`, `rho_beta`, `eta_gamma`, `sigma_gamma`,
-#'   `rho_gamma`.
+#'   `rho_gamma`, `sigma_beta1`, `sigma_theta1`, `sigma_theta_lag`.
+#'   Missing entries fall back to internal defaults.
 #' @param num_chains Integer. Number of MCMC chains (default `4`).
-#' @param iter Integer. Total iterations *per* chain including warm‑up
+#' @param iter Integer. Total iterations *per* chain including warm-up
 #'   (default `2000`).
-#' @param stan_model_file Optional path to a pre‑compiled Stan model.
-#'   If `NULL`, the package‑internal teacher‑style model is used.
-#' @param control List passed to Stan sampling (see **rstan** docs).
+#' @param stan_model_file Path to a **pre-compiled** Stan model object saved
+#'   via `saveRDS()` (default `"inst/stan/causal_recur_model.rds"`). The file
+#'   must exist; otherwise the function stops.
+#' @param control List passed to `rstan::sampling()` (e.g.,
+#'   `list(adapt_delta = 0.95, max_treedepth = 15)`).
+#' @param cores Integer. Number of CPU cores to use for sampling (passed to
+#'   `rstan::sampling()`).
 #' @param verbose Logical. Print progress messages (default `TRUE`).
+#' @param lag_col Character scalar or `NULL`. If `NULL`, a column named
+#'   `"lagYk"` is created and initialized to 0 before preprocessing. If a name
+#'   is provided and that column is **absent** in `data`, `preprocess_data()`
+#'   will generate it as an integer indicator based on the subject-specific lag
+#'   of `I(Y_obs > 0)`. If the column already exists, it is left unchanged.
 #' @inheritParams base::print
 #'
 #' @return An object of class `causal_recur_fit` (list) with elements
@@ -39,14 +51,23 @@
 #'   `stan_data_list`.
 #'
 #' @details
-#' Internally the function
+#' Internally the function:
 #' 1. Copies `id_col`, `time_col`, and `treat_col` into the canonical names
-#'    `pat_id`, `k_idx`, and `A`, and copies the outcomes named on the left‑hand
+#'    `pat_id`, `k_idx`, and `A`, and copies the outcomes named on the left-hand
 #'    sides of `formula_T` / `formula_Y` into `T_obs` / `Y_obs`;
-#' 2. Calls [preprocess_data()] to fill missing intervals, create lagged
-#'    variables, and run basic checks;
-#' 3. Builds teacher‑style standata, compiles the Stan model, and runs MCMC
-#'    sampling via **rstan**.
+#' 2. Calls `preprocess_data()` for **row ordering by (`pat_id`,`k_idx`)**,
+#'    **subject-ID remapping**, and **optional lag-column creation** when the
+#'    requested `lag_col` is absent. It **does not** pad to a full grid,
+#'    **does not** carry treatment forward, and **does not** truncate after
+#'    terminal events in the current implementation;
+#' 3. Constructs design matrices from the right-hand sides of `formula_T` and
+#'    `formula_Y` **excluding** the treatment column; missing values are set to
+#'    zero. The terminal model uses all rows; the recurrent model uses rows with
+#'    `k_idx > 1`. Baseline (`k_idx == 1`) and time-varying covariate matrices
+#'    unrelated to the lag terms are set to zero-column matrices (`P = 0`);
+#' 4. Loads the pre-compiled Stan model from `stan_model_file` and runs MCMC via
+#'    `rstan::sampling()`, returning the fitted object along with the data,
+#'    design information, prior settings, and the full list of inputs to Stan.
 #'
 #' @examples
 #' df <- data.frame(
@@ -66,10 +87,12 @@
 #'   id_col     = "sid",
 #'   time_col   = "period",
 #'   treat_col  = "trt_arm",
-#'   formula_T  = death_flag  ~ Y_prev + A + k_idx,
-#'   formula_Y  = event_count ~ Y_prev + A + k_idx,
+#'   lag_col    = "lagYk"
+#'   formula_T  = death_flag  ~ lagYk + A ,
+#'   formula_Y  = event_count ~ lagYk + A ,
 #'   prior      = prior,
-#'   num_chains = 1, iter = 100
+#'   num_chains = 1, iter = 100,
+#'   stan_model_file = "causal_recur_model.rds",
 #' )
 #' print(fit)
 #' summary(fit)
@@ -79,6 +102,7 @@
 #' @importFrom rstan stan_model sampling
 #' @importFrom stats model.matrix
 #' @importFrom dplyr mutate
+#' @importFrom stats terms reformulate na.pass plogis as.formula median
 #' @name causal_recur_fit
 #' @docType class
 #' @export
@@ -89,7 +113,8 @@ fit_causal_recur <- function(
     formula_T, formula_Y,
     prior = NULL,
     num_chains = 4, iter = 2000,
-    stan_model_file = "inst/stan/causal_recur_model.rds",
+    stan_model_file = system.file("stan", "causal_recur_model.rds",
+                                   package = "BayCauRETM"),
     control = list(adapt_delta = 0.95, max_treedepth = 15),
     cores = 1,
     verbose = TRUE,
@@ -209,7 +234,7 @@ fit_causal_recur <- function(
   if (verbose) message("Loading pre-compiled Stan model...")
   stan_mod <- readRDS(stan_model_file)
 
-  if (verbose) message(sprintf("Sampling (%d chains × %d iter, cores=%d)...",
+  if (verbose) message(sprintf("Sampling (%d chains * %d iter, cores=%d)...",
                                num_chains, iter, cores))
 
   stan_fit <- rstan::sampling(
@@ -242,8 +267,10 @@ fit_causal_recur <- function(
 
 # print / summary / plot methods
 
-#' @describeIn causal_recur_fit Print a brief summary
+#' @describeIn causal_recur_fit Print a brief object summary.
+#' @param x A `causal_recur_fit` object.
 #' @export
+
 print.causal_recur_fit <- function(x, ...) {
   cat("Causal recurrent event model fit\n")
   if (!is.null(x$n_pat)) cat("  Number of subjects:", x$n_pat, "\n")
@@ -253,9 +280,13 @@ print.causal_recur_fit <- function(x, ...) {
   invisible(x)
 }
 
-#' @describeIn causal_recur_fit Summarise posterior estimates
+
+#' @describeIn causal_recur_fit Summarize posterior parameter estimates.
+#' @param object A `causal_recur_fit` object.
+#' @param pars_to_report Character vector of parameter names (regex allowed).
 #' @method summary causal_recur_fit
 #' @export
+
 summary.causal_recur_fit <- function(object,
                                      pars_to_report = c("beta1", "theta1", "thetaLag",
                                                         "betaL[1]", "thetaL[1]"),
@@ -286,8 +317,10 @@ summary.causal_recur_fit <- function(object,
   invisible(df)
 }
 
-#' @describeIn causal_recur_fit Prompt user to run diagnostics
+#' @describeIn causal_recur_fit Display MCMC diagnostic guidance (no plot produced).
+#' @param x A `causal_recur_fit` object.
 #' @export
+
 plot.causal_recur_fit <- function(x, ...) {
   cat("To check MCMC convergence, please run:\n")
   cat("  mcmc_diagnosis(fit_out, pars_to_check = ..., save_plots = ..., positivity = ...)\n")

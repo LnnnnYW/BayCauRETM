@@ -1,25 +1,24 @@
-#' Posterior Causal Contrast delta(s, K + 1) - Interactive Wrapper
+#' Posterior causal contrast delta(s, K+1) - interactive wrapper
 #'
 #' @description
-#' Convenience wrapper: builds the static plot via
-#' \code{\link{plot_posterior_causal_contrast_static}}, optionally saves it, and
+#' Convenience wrapper that builds the static plot via
+#' [plot_posterior_causal_contrast_static()], optionally saves it to disk, and
 #' optionally converts it to an interactive Plotly object.
 #'
 #' @inheritParams plot_posterior_causal_contrast_static
-#' @param interactive Logical; if TRUE return a Plotly object.
-#' @param save_file Optional filename to save static plot (PNG/PDF, etc.).
-#' @param line_size Numeric; width of the mean line (default 1).
-#' @param width,height,dpi Device settings when saving.
-#' @param ribbon_alpha Numeric in 0 to 1; transparency of credible-interval
+#' @param interactive Logical; if `TRUE`, return a Plotly object via
+#'   `plotly::ggplotly()`.
+#' @param save_file Optional file path to save the static ggplot (PNG/PDF, etc.).
+#' @param width,height,dpi Device settings used by `ggplot2::ggsave()` when saving.
 #'
-#' @return ggplot or plotly object.
+#' @return A ggplot or plotly object.
 #'
 #' @examples
 #' \dontrun{
-#' # interactive plot in RStudio viewer
+#' # Interactive plot in the viewer
 #' plot_posterior_causal_contrast_interactive(gcomp_out, interactive = TRUE)
 #'
-#' # save static PNG
+#' # Save a static PNG (the returned value is still a ggplot)
 #' plot_posterior_causal_contrast_interactive(
 #'   gcomp_out, save_file = "delta_static.png", s_vec = 1:K
 #' )
@@ -28,6 +27,8 @@
 #' @importFrom ggplot2 ggsave
 #' @importFrom plotly ggplotly
 #' @export
+
+
 
 plot_posterior_causal_contrast_interactive <- function(contrast_list,
                                                        s_vec        = NULL,

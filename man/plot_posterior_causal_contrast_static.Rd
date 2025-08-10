@@ -2,7 +2,7 @@
 % Please edit documentation in R/plot_posterior_causal_contrast_static.R
 \name{plot_posterior_causal_contrast_static}
 \alias{plot_posterior_causal_contrast_static}
-\title{Posterior Causal Contrast delta(s, K + 1) - Static Wrapper}
+\title{Posterior causal contrast delta(s, K+1) - static wrapper}
 \usage{
 plot_posterior_causal_contrast_static(
   contrast_list,
@@ -15,45 +15,40 @@ plot_posterior_causal_contrast_static(
 )
 }
 \arguments{
-\item{contrast_list}{Either a single \code{gcomp_out} object or \strong{named} list
-of such objects to compare several scenarios side-by-side.}
+\item{contrast_list}{Either a single \code{gcomp_out} object or a \strong{named} list
+of such objects to compare multiple scenarios side by side.}
 
-\item{s_vec}{Integer vector of start intervals to include.  If \code{NULL}
-(default) all intervals contained in \code{$delta} are plotted.}
+\item{s_vec}{Integer vector of start intervals to include. If \code{NULL}
+(default), all intervals contained in \verb{$delta} are plotted.}
 
-\item{theme_fn}{A ggplot2 theme function (default
-\code{ggplot2::theme_minimal}).}
+\item{theme_fn}{A ggplot2 theme function (default \code{ggplot2::theme_minimal}).}
+
+\item{point_size}{Numeric; size of point markers (default \code{3}).}
+
+\item{error_width}{Numeric; width of error bars (default \code{0.15}).}
 
 \item{ref_line}{Numeric or \code{NULL}; if numeric, draws a horizontal dashed
-line at that \emph{y}.  Typical use \code{ref_line = 0}.}
+line at that y-value (typical use \code{ref_line = 0}).}
 
-\item{line_size}{Numeric; width of mean line (default 1).}
-
-\item{ribbon_alpha}{Numeric in 0 to 1; transparency of credible-interval
-ribbons (default 0.3).}
-
-\item{show_points}{Logical; draw points at each \eqn{s}? (default \code{TRUE}).}
-
-\item{label_points}{Logical; annotate mean value at points? (default \code{FALSE}).}
+\item{...}{Additional styling options forwarded to the underlying geoms and
+helpers (e.g., \code{line_size}, \code{ribbon_alpha}, \code{show_points}, \code{label_points}).}
 }
 \value{
-A \link[ggplot2]{ggplot} object.
+A \link[ggplot2:ggplot]{ggplot2::ggplot} object.
 }
 \description{
 Produce a static \strong{ggplot2} figure of the posterior causal contrast
-\eqn{\Delta(s,\,K+1)} against treatment–start interval \eqn{s}, for one or
-multiple scenarios produced by \code{\link{g_computation}}.
+\code{delta(s, K+1)} against the treatment-start interval \code{s} for one or multiple
+scenarios produced by \code{\link[=g_computation]{g_computation()}}.
 }
 \examples{
 \dontrun{
-# single scenario
-p <- plot_posterior_causal_contrast_static(gcomp_out, s_vec = 1:K, ref_line = 0)
-print(p)
-
-# two scenarios
-p2 <- plot_posterior_causal_contrast_static(
-  list(adj = g_adj, unadj = g_unadj), s_vec = 1:K, show_points = TRUE
+p <- plot_posterior_causal_contrast_static(
+  contrast_list = gcomp_out,
+  s_vec = 1:K,
+  ref_line = 0
 )
+print(p)
 }
 
 }

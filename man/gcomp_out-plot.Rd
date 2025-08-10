@@ -20,31 +20,37 @@
 \arguments{
 \item{x}{An object of class \code{gcomp_out}.}
 
-\item{s_vec}{Integer vector of intervals to plot. If NULL, all available s are used.}
+\item{s_vec}{Integer vector of intervals to plot. If \code{NULL}, all
+available \code{s} are used.}
 
-\item{ref_line}{Numeric or NULL. y-coordinate for horizontal reference line (e.g., 0). Default 0.}
+\item{ref_line}{Numeric or \code{NULL}. y-coordinate for a horizontal
+reference line (e.g., \code{0}). Default \code{0}.}
 
-\item{theme_fn}{A ggplot2 theme function (default: \code{ggplot2::theme_minimal}).}
+\item{theme_fn}{A \pkg{ggplot2} theme function (default:
+\code{ggplot2::theme_minimal}).}
 
-\item{interactive}{Logical. If TRUE, returns a Plotly object via \code{plotly::ggplotly()}. Default FALSE.}
+\item{interactive}{Logical. If \code{TRUE}, returns a Plotly object via
+\code{plotly::ggplotly()}. Default \code{FALSE}.}
 
-\item{save_file}{Optional character. File path to save the static ggplot (e.g., "plot.png"). Default NULL.}
+\item{save_file}{Optional character. File path to save the static ggplot
+(e.g., \code{"plot.png"}). Default \code{NULL}.}
 
-\item{width}{Numeric. Width in inches for saving (default: 8).}
+\item{width}{Numeric. Width in inches for saving (default: \code{8}).}
 
-\item{height}{Numeric. Height in inches for saving (default: 5).}
+\item{height}{Numeric. Height in inches for saving (default: \code{5}).}
 
-\item{dpi}{Numeric. Resolution in dpi for saving (default: 300).}
+\item{dpi}{Numeric. Resolution in dpi for saving (default: \code{300}).}
 
-\item{...}{Additional arguments passed to underlying static/interactive plot functions,
-such as \code{line_size}, \code{ribbon_alpha}, \code{show_points}, \code{label_points}.}
+\item{...}{Additional arguments forwarded to the underlying static or
+interactive plotting helpers (e.g., \code{line_size}, \code{ribbon_alpha},
+\code{show_points}, \code{label_points}).}
 }
 \value{
 Invisibly returns the ggplot or plotly object.
 }
 \description{
-Plot the causal contrast delta(s, K+1) versus treatment start interval s for a
-\code{gcomp_out} object. By default returns a static ggplot. To obtain an
-interactive Plotly plot or save to file, set \code{interactive = TRUE} or
-provide \code{save_file}.
+Plot the causal contrast \code{delta(s, K+1)} versus treatment-start
+interval \code{s} for a \code{gcomp_out} object. By default, returns a static
+\pkg{ggplot2} graphic. To obtain an interactive Plotly plot or save to file,
+set \code{interactive = TRUE} or provide \code{save_file}.
 }

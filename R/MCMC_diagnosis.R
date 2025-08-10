@@ -1,51 +1,43 @@
-# mcmc_diagnosis
-
-#' MCMC Convergence and Positivity Diagnostics
+#' MCMC convergence and positivity diagnostics
 #'
 #' @description
-#' Summarize MCMC convergence for a fitted model (R‑hat and effective sample
-#' size), generate trace‑plots for specified parameters, and optionally perform
-#' positivity (overlap) diagnostics on treatment assignment.
+#' Summarize MCMC convergence for a fitted model (R-hat and effective sample
+#' size), generate trace plots for selected parameters via
+#' `bayesplot::mcmc_trace()`, and optionally perform positivity diagnostics
+#' for treatment assignment.
 #'
-#' @param fit_out Output list from [fit_causal_recur()], containing at least
-#'   `stan_fit` (an **rstan** `stanfit` object) and — if `positivity = TRUE` —
-#'   `data_preprocessed`.
-#' @param pars_to_check Character vector of parameter‑name patterns to diagnose.
-#'   **Defaults have been updated for the teacher‑style model:**
-#'   `c("beta0", "theta0", "beta1", "theta1", "theta_lag")`.
-#'   Patterns are passed to **bayesplot**’s `mcmc_trace()`.
-#' @param save_plots Logical; if `TRUE`, saves each trace‑plot as a PNG file
-#'   using `plot_prefix`.
-#' @param plot_prefix Filename prefix for saved plots (default: `"traceplot_"`).
-#' @param positivity Logical; if `TRUE`, perform additional positivity
-#'   diagnostics on treatment assignment (default `FALSE`).
-#' @inheritParams base::print
+#' @param fit_out Output list from `fit_causal_recur()`, containing `stan_fit`
+#'   (an rstan `stanfit` object) and, if `positivity = TRUE`, `data_preprocessed`.
+#' @param pars_to_check Character vector of parameter-name patterns to diagnose
+#'   (patterns are passed to `bayesplot::mcmc_trace()`).
+#' @param save_plots Logical; if `TRUE`, save each trace plot as a PNG using `plot_prefix`.
+#' @param plot_prefix Filename prefix for saved plots (default `"traceplot_"`).
+#' @param positivity Logical; if `TRUE`, run an additional logistic-regression
+#'   propensity-score check (default `FALSE`).
+#' @param ps_covariates Character vector of column names used in the positivity
+#'   model (required when `positivity = TRUE`).
 #'
-#' @return An object of class `mcmc_diag`, a list with components:
-#'   * **stats** —data frame with `Parameter`, `n_eff`, and `Rhat`.
-#'   * **plots** —named list of ggplot objects for the trace‑plots.
-#'
-#' @details
-#' If `positivity = TRUE`, a logistic regression of treatment `A` on history
-#' (`Y_prev`, `k_idx`) plus any extra covariates is fitted using the
-#' pre‑processed data. Propensity‑score summaries and a histogram are produced.
+#' @return An object of class `mcmc_diag`, a list with:
+#'   * `stats` — data frame with `Parameter`, `n_eff`, and `Rhat`;
+#'   * `plots` — named list of ggplot objects for the trace plots.
 #'
 #' @examples
 #' \dontrun{
-#' fit_out <- fit_causal_recur(...)
-#' diag <- mcmc_diagnosis(fit_out, positivity = TRUE)
-#' print(diag)
-#' plot(diag, pars = "beta1")
+#' # diag <- mcmc_diagnosis(fit_out, pars_to_check = c("beta0","theta0"))
+#' # print(diag)
+#' # plot(diag, pars = "beta0")
 #' }
 #'
 #' @importFrom rstan summary
 #' @importFrom bayesplot mcmc_trace
 #' @importFrom ggplot2 ggtitle ggsave ggplot aes geom_histogram labs theme
 #' @importFrom stats glm predict quantile
-#'
 #' @name mcmc_diag
 #' @docType class
 #' @export
+
+
+
 mcmc_diagnosis <- function(fit_out,
                            pars_to_check = c("beta0", "theta0", "beta1", "theta1", "thetaLag"),
                            save_plots     = FALSE,
@@ -138,23 +130,33 @@ mcmc_diagnosis <- function(fit_out,
 
 # print / summary / plot methods
 
-#' @describeIn mcmc_diag Print the table of MCMC convergence statistics (R‑hat & n_eff).
+#' @describeIn mcmc_diag Print the table of MCMC convergence statistics (R-hat & n_eff).
+#' @param x An `mcmc_diag` object.
+#' @param ... Additional arguments (ignored).
 #' @export
+
 print.mcmc_diag <- function(x, ...) {
   cat("MCMC convergence diagnostics (R-hat & n_eff):\n")
   print(x$stats)
   invisible(x$stats)
 }
 
-#' @describeIn mcmc_diag Same as \code{print()} for a \code{mcmc_diag} object.
+#' @describeIn mcmc_diag Same as `print()` for an `mcmc_diag` object.
+#' @param object An `mcmc_diag` object.
+#' @param ... Additional arguments (ignored).
 #' @method summary mcmc_diag
 #' @export
+
 summary.mcmc_diag <- function(object, ...) {
   print(object)
 }
 
-#' @describeIn mcmc_diag Display stored trace‑plots; optionally filter by \code{pars}.
+#' @describeIn mcmc_diag Display stored trace plots; optionally filter by `pars`.
+#' @param x An `mcmc_diag` object.
+#' @param pars Optional character vector of parameter names to display.
+#' @param ... Additional arguments (ignored).
 #' @export
+
 plot.mcmc_diag <- function(x, pars = NULL, ...) {
   plots <- x$plots
   if (!is.null(pars)) {

@@ -9,13 +9,15 @@
 \arguments{
 \item{x}{An object of class \code{ps_diag}.}
 
-\item{type}{Character, either "histogram" or "density" (default: both available).}
+\item{type}{Character. One of \code{names(x$plots)}; typically \code{"histogram"} or
+\code{"density"}.}
 
-\item{...}{Additional arguments passed to the underlying ggplot layers (e.g., adjust bins).}
+\item{...}{Additional arguments passed to the underlying ggplot layers.}
 }
 \value{
 Invisibly returns the ggplot object.
 }
 \description{
-Plot propensity score diagnostics. User specifies \code{type} as "histogram" or "density".
+Plot propensity score diagnostics. The \code{type} argument selects one of the
+available plots in \code{x$plots} (typically \code{"histogram"} or \code{"density"}).
 }

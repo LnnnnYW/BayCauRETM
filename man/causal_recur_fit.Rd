@@ -7,7 +7,7 @@
 \alias{print.causal_recur_fit}
 \alias{summary.causal_recur_fit}
 \alias{plot.causal_recur_fit}
-\title{Fit Bayesian Causal Recurrent and Terminal‑Event Model}
+\title{Fit Bayesian Causal Recurrent and Terminal-Event Model}
 \usage{
 fit_causal_recur(
   data,
@@ -20,7 +20,7 @@ fit_causal_recur(
   prior = NULL,
   num_chains = 4,
   iter = 2000,
-  stan_model_file = "inst/stan/causal_recur_model.rds",
+  stan_model_file = system.file("stan", "causal_recur_model.rds", package = "BayCauRETM"),
   control = list(adapt_delta = 0.95, max_treedepth = 15),
   cores = 1,
   verbose = TRUE,
@@ -38,10 +38,10 @@ fit_causal_recur(
 \method{plot}{causal_recur_fit}(x, ...)
 }
 \arguments{
-\item{data}{A \strong{long‑format} \code{data.frame} that contains the user‑named
+\item{data}{A \strong{long-format} \code{data.frame} that contains the user-named
 identifier, time index, treatment, outcome, and any covariate columns.
 These names are supplied via \code{id_col}, \code{time_col}, \code{treat_col}, plus the
-left‑hand sides of \code{formula_T} and \code{formula_Y}.}
+left-hand sides of \code{formula_T} and \code{formula_Y}.}
 
 \item{K}{Integer. Total number of discrete intervals in the study.}
 
@@ -53,34 +53,51 @@ index} (\verb{1,...,K}).}
 \item{treat_col}{Character scalar. Column name holding the \strong{treatment
 indicator} (\code{0/1}).}
 
-\item{formula_T}{A formula for the terminal‑event (death) sub‑model, e.g.
-\code{death_flag ~ Y_prev + A + k_idx}.}
+\item{formula_T}{A formula for the terminal-event (death) sub-model, e.g.
+\code{death_flag ~ Y_prev + A + k_idx}. The \strong{right-hand side terms excluding
+the treatment column} are used to build a (possibly empty) design matrix
+for time-varying/lagged predictors in the terminal sub-model.}
 
-\item{formula_Y}{A formula for the recurrent‑count sub‑model, e.g.
-\code{event_count ~ Y_prev + A + k_idx}.}
+\item{formula_Y}{A formula for the recurrent-count sub-model, e.g.
+\code{event_count ~ Y_prev + A + k_idx}. The \strong{right-hand side terms excluding
+the treatment column} are used to build a (possibly empty) design matrix
+for the recurrent sub-model (for \code{k_idx > 1} rows).}
 
-\item{prior}{Named list of gAR(1) hyperparameters with elements
+\item{prior}{Named list of gAR(1) hyperparameters. Supported elements:
 \code{eta_beta}, \code{sigma_beta}, \code{rho_beta}, \code{eta_gamma}, \code{sigma_gamma},
-\code{rho_gamma}.}
+\code{rho_gamma}, \code{sigma_beta1}, \code{sigma_theta1}, \code{sigma_theta_lag}.
+Missing entries fall back to internal defaults.}
 
 \item{num_chains}{Integer. Number of MCMC chains (default \code{4}).}
 
-\item{iter}{Integer. Total iterations \emph{per} chain including warm‑up
+\item{iter}{Integer. Total iterations \emph{per} chain including warm-up
 (default \code{2000}).}
 
-\item{stan_model_file}{Optional path to a pre‑compiled Stan model.
-If \code{NULL}, the package‑internal teacher‑style model is used.}
+\item{stan_model_file}{Path to a \strong{pre-compiled} Stan model object saved
+via \code{saveRDS()} (default \code{"inst/stan/causal_recur_model.rds"}). The file
+must exist; otherwise the function stops.}
 
-\item{control}{List passed to Stan sampling (see \strong{rstan} docs).}
+\item{control}{List passed to \code{rstan::sampling()} (e.g.,
+\code{list(adapt_delta = 0.95, max_treedepth = 15)}).}
+
+\item{cores}{Integer. Number of CPU cores to use for sampling (passed to
+\code{rstan::sampling()}).}
 
 \item{verbose}{Logical. Print progress messages (default \code{TRUE}).}
 
-\item{x}{an object used to select a method.}
+\item{lag_col}{Character scalar or \code{NULL}. If \code{NULL}, a column named
+\code{"lagYk"} is created and initialized to 0 before preprocessing. If a name
+is provided and that column is \strong{absent} in \code{data}, \code{preprocess_data()}
+will generate it as an integer indicator based on the subject-specific lag
+of \code{I(Y_obs > 0)}. If the column already exists, it is left unchanged.}
+
+\item{x}{A \code{causal_recur_fit} object.}
 
 \item{...}{further arguments passed to or from other methods.}
 
-\item{x_cols}{Character vector of additional (static or time‑varying)
-covariate names to keep; \code{NULL} if none.}
+\item{object}{A \code{causal_recur_fit} object.}
+
+\item{pars_to_report}{Character vector of parameter names (regex allowed).}
 }
 \value{
 An object of class \code{causal_recur_fit} (list) with elements
@@ -88,28 +105,39 @@ An object of class \code{causal_recur_fit} (list) with elements
 \code{stan_data_list}.
 }
 \description{
-Fits a discrete‑time Bayesian model for recurrent event counts and a terminal
-event (death) using gAR(1) smoothing priors on the time‑varying intercepts.
+Fits a discrete-time Bayesian model for recurrent counts and a terminal
+event using gAR(1) smoothing priors on time-varying intercepts. This
+implementation expects a \strong{pre-compiled} Stan model (\code{.rds}) and uses
+\code{rstan::sampling()} for MCMC.
 }
 \details{
-Internally the function
+Internally the function:
 \enumerate{
 \item Copies \code{id_col}, \code{time_col}, and \code{treat_col} into the canonical names
-\code{pat_id}, \code{k_idx}, and \code{A}, and copies the outcomes named on the left‑hand
+\code{pat_id}, \code{k_idx}, and \code{A}, and copies the outcomes named on the left-hand
 sides of \code{formula_T} / \code{formula_Y} into \code{T_obs} / \code{Y_obs};
-\item Calls \code{\link[=preprocess_data]{preprocess_data()}} to fill missing intervals, create lagged
-variables, and run basic checks;
-\item Builds teacher‑style standata, compiles the Stan model, and runs MCMC
-sampling via \strong{rstan}.
+\item Calls \code{preprocess_data()} for \strong{row ordering by (\code{pat_id},\code{k_idx})},
+\strong{subject-ID remapping}, and \strong{optional lag-column creation} when the
+requested \code{lag_col} is absent. It \strong{does not} pad to a full grid,
+\strong{does not} carry treatment forward, and \strong{does not} truncate after
+terminal events in the current implementation;
+\item Constructs design matrices from the right-hand sides of \code{formula_T} and
+\code{formula_Y} \strong{excluding} the treatment column; missing values are set to
+zero. The terminal model uses all rows; the recurrent model uses rows with
+\code{k_idx > 1}. Baseline (\code{k_idx == 1}) and time-varying covariate matrices
+unrelated to the lag terms are set to zero-column matrices (\code{P = 0});
+\item Loads the pre-compiled Stan model from \code{stan_model_file} and runs MCMC via
+\code{rstan::sampling()}, returning the fitted object along with the data,
+design information, prior settings, and the full list of inputs to Stan.
 }
 }
 \section{Methods (by generic)}{
 \itemize{
-\item \code{print(causal_recur_fit)}: Print a brief summary
+\item \code{print(causal_recur_fit)}: Print a brief object summary.
 
-\item \code{summary(causal_recur_fit)}: Summarise posterior estimates
+\item \code{summary(causal_recur_fit)}: Summarize posterior parameter estimates.
 
-\item \code{plot(causal_recur_fit)}: Prompt user to run diagnostics
+\item \code{plot(causal_recur_fit)}: Display MCMC diagnostic guidance (no plot produced).
 
 }}
 \examples{
@@ -130,10 +158,12 @@ fit <- fit_causal_recur(
   id_col     = "sid",
   time_col   = "period",
   treat_col  = "trt_arm",
-  formula_T  = death_flag  ~ Y_prev + A + k_idx,
-  formula_Y  = event_count ~ Y_prev + A + k_idx,
+  lag_col    = "lagYk"
+  formula_T  = death_flag  ~ lagYk + A ,
+  formula_Y  = event_count ~ lagYk + A ,
   prior      = prior,
-  num_chains = 1, iter = 100
+  num_chains = 1, iter = 100,
+  stan_model_file = "causal_recur_model.rds",
 )
 print(fit)
 summary(fit)

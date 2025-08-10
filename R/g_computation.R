@@ -1,64 +1,46 @@
-# g_computation
-
-#' Bayesian g‑Computation for Recurrent‑Event Rate Contrasts
+#' Bayesian g-computation for recurrent-event rate contrasts
 #'
-#' Perform Bayesian g‑computation to estimate average recurrent‑event
-#' rates under different treatment–initiation times versus never treating,
-#' using the **teacher‑style** model parameters returned by
-#' \code{\link{fit_causal_recur}}.
+#' @description
+#' Estimate average recurrent-event rates under different treatment-start times
+#' versus never treating, using teacher-style parameters from [fit_causal_recur()].
 #'
-#' @param fit_out Output list from \code{\link{fit_causal_recur}}.
-#' @param s_vec Integer vector of treatment‑start intervals.
-#' @param B     Number of Monte‑Carlo replicates per posterior draw (default
-#'   \code{50}).
+#' @param fit_out Output list from [fit_causal_recur()].
+#' @param s_vec Integer vector of treatment-start intervals.
+#' @param B Integer. Number of Monte Carlo replicates per posterior draw (default 50).
+#' @param Lmat Optional baseline design matrix for level/lag effects; if NULL,
+#'   it is built from the first row per subject and the right-hand side of
+#'   `fit_out$design_info$formula_T` (no intercept).
+#' @param cores Integer. If > 1, simulate in parallel via `parallel::parLapply()`.
 #'
-#' @return An object of class \code{gcomp_out}, a list with components:
-#'   \describe{
-#'     \item{R_mat}{Numeric matrix with one row per posterior draw and one
-#'       column per treatment strategy (the last column is “never treat”,
-#'       \code{s = K + 1}).  Each entry is the Dirichlet‑weighted mean event
-#'       rate under that strategy.}
-#'     \item{delta}{Named list of length \code{length(s_vec)}.  Each element
-#'       contains the posterior draws of \eqn{\Delta(s)=R(s)-R(K+1)} together
-#'       with its mean and 95% equal‑tail interval.}
-#'   }
+#' @return A `gcomp_out` list with two components:
+#'   `R_mat` (rows = posterior draws, columns = strategies `s = 1..K, K+1` for
+#'   never treat) and `delta` (named list with draws and summaries of
+#'   `Delta(s) = R(s) - R(K+1)`).
 #'
 #' @details
-#' For each posterior draw \eqn{m=1,\dots,M} the algorithm:
-#' \enumerate{
-#'   \item Generates Dirichlet weights across subjects (to mimic the Bayesian
-#'         bootstrap).
-#'   \item For every treatment start time \eqn{s\in s\_vec} \emph{and} for the
-#'         “never‑treat” strategy (\eqn{s=K+1}) it calls an internal simulator
-#'         that propagates the teacher‑style parameters
-#'         \eqn{\{\beta_0(k),\beta_1,\beta_L,\theta_0(k),\theta_1,\theta_L,
-#'         \theta_{\mathrm{lag}}\}} over \eqn{B} replicate paths of
-#'         death/recurrent events.
-#'   \item Computes the subject‑level mean event rate in each replicate, then
-#'         Dirichlet‑averages those rates to obtain \eqn{R_m(s)}.
-#'   \item Stores all \eqn{R_m(s)} and their contrasts
-#'         \eqn{\Delta_m(s)=R_m(s)-R_m(K+1)}.
-#' }
-#'
-#' S3 methods \code{print}, \code{summary}, and \code{plot} are available; e.g.
-#' \code{print(gcomp_out)}, \code{plot(gcomp_out,interactive=TRUE)}.
+#' For each posterior draw, the algorithm draws Dirichlet weights over subjects,
+#' simulates B replicated paths under each strategy using the teacher-style
+#' parameters (logistic death hazard; Poisson log-mean for recurrent counts with
+#' an optional lag term), averages subject-level rates with the Dirichlet weights,
+#' and stores the contrasts `Delta(s)`.
 #'
 #' @examples
-#' \dontrun{
-#' gcomp_out <- g_computation(fit_out = fit, s_vec = 1:K, B = 20)
-#' print(gcomp_out)
-#' plot(gcomp_out, ref_line = 0)
+#' \donttest{
+#' # g <- g_computation(fit_out = fit, s_vec = 1:K, B = 20)
+#' # print(g)
+#' # plot(g, ref_line = 0)
 #' }
 #'
 #' @importFrom rstan extract
 #' @importFrom stats rgamma rbinom rpois weighted.mean quantile
 #' @importFrom ggplot2 ggplot aes geom_hline geom_errorbar geom_line geom_point
-#'   geom_text labs scale_color_manual scale_shape_manual theme position_dodge
-#'   ggsave
+#'   geom_text labs scale_color_manual scale_shape_manual theme position_dodge ggsave
 #' @importFrom dplyr bind_rows
 #' @importFrom plotly ggplotly
 #' @keywords internal
 #' @export
+
+
 
 g_computation <- function(Lmat = NULL,
                           fit_out,
@@ -232,13 +214,13 @@ g_computation <- function(Lmat = NULL,
 }
 
 
-
-
+# print / summary / plot methods
 
 #' Print method for g_computation output
 #'
 #' @description
-#' Print a summary table of causal contrasts delta(s, K+1) for a \code{gcomp_out} object.
+#' Print a summary table of causal contrasts \code{delta(s, K+1)} for a
+#' \code{gcomp_out} object.
 #'
 #' @param x An object of class \code{gcomp_out}, output of \code{g_computation()}.
 #' @param ... Further arguments (ignored).
@@ -246,36 +228,7 @@ g_computation <- function(Lmat = NULL,
 #' @rdname gcomp_out-print
 #' @method print gcomp_out
 #' @export
-print.gcomp_out <- function(x, ...) {
-  df <- do.call(rbind, lapply(names(x$delta), function(nm) {
-    xi <- x$delta[[nm]]
-    data.frame(
-      s      = as.integer(sub("^s=", "", nm)),
-      Mean   = xi$mean,
-      `2.5%` = xi$CI_lower,
-      `97.5%` = xi$CI_upper,
-      row.names = NULL,
-      stringsAsFactors = FALSE
-    )
-  }))
-  cat("Causal contrast delta(s, K+1) summary:\n")
-  print(df, row.names = FALSE)
-  invisible(df)
-}
 
-
-
-#' Print method for g_computation output
-#'
-#' @description
-#' Print a summary table of causal contrasts delta(s, K+1) for a \code{gcomp_out} object.
-#'
-#' @param x An object of class \code{gcomp_out}, output of \code{g_computation()}.
-#' @param ... Further arguments (ignored).
-#' @return Invisibly returns a data.frame of the summary.
-#' @rdname gcomp_out-print
-#' @method print gcomp_out
-#' @export
 print.gcomp_out <- function(x, ...) {
   df <- do.call(rbind, lapply(names(x$delta), function(nm) {
     xi <- x$delta[[nm]]
@@ -304,34 +257,43 @@ print.gcomp_out <- function(x, ...) {
 #' @rdname gcomp_out-summary
 #' @method summary gcomp_out
 #' @export
+
 summary.gcomp_out <- function(object, ...) {
   print(object)
 }
 
+
 #' Plot method for g_computation output
 #'
 #' @description
-#' Plot the causal contrast delta(s, K+1) versus treatment start interval s for a
-#' \code{gcomp_out} object. By default returns a static ggplot. To obtain an
-#' interactive Plotly plot or save to file, set \code{interactive = TRUE} or
-#' provide \code{save_file}.
+#' Plot the causal contrast \code{delta(s, K+1)} versus treatment-start
+#' interval \code{s} for a \code{gcomp_out} object. By default, returns a static
+#' \pkg{ggplot2} graphic. To obtain an interactive Plotly plot or save to file,
+#' set \code{interactive = TRUE} or provide \code{save_file}.
 #'
 #' @param x An object of class \code{gcomp_out}.
-#' @param s_vec Integer vector of intervals to plot. If NULL, all available s are used.
-#' @param ref_line Numeric or NULL. y-coordinate for horizontal reference line (e.g., 0). Default 0.
-#' @param theme_fn A ggplot2 theme function (default: \code{ggplot2::theme_minimal}).
-#' @param interactive Logical. If TRUE, returns a Plotly object via \code{plotly::ggplotly()}. Default FALSE.
-#' @param save_file Optional character. File path to save the static ggplot (e.g., "plot.png"). Default NULL.
-#' @param width Numeric. Width in inches for saving (default: 8).
-#' @param height Numeric. Height in inches for saving (default: 5).
-#' @param dpi Numeric. Resolution in dpi for saving (default: 300).
-#' @param ... Additional arguments passed to underlying static/interactive plot functions,
-#'   such as \code{line_size}, \code{ribbon_alpha}, \code{show_points}, \code{label_points}.
+#' @param s_vec Integer vector of intervals to plot. If \code{NULL}, all
+#'   available \code{s} are used.
+#' @param ref_line Numeric or \code{NULL}. y-coordinate for a horizontal
+#'   reference line (e.g., \code{0}). Default \code{0}.
+#' @param theme_fn A \pkg{ggplot2} theme function (default:
+#'   \code{ggplot2::theme_minimal}).
+#' @param interactive Logical. If \code{TRUE}, returns a Plotly object via
+#'   \code{plotly::ggplotly()}. Default \code{FALSE}.
+#' @param save_file Optional character. File path to save the static ggplot
+#'   (e.g., \code{"plot.png"}). Default \code{NULL}.
+#' @param width Numeric. Width in inches for saving (default: \code{8}).
+#' @param height Numeric. Height in inches for saving (default: \code{5}).
+#' @param dpi Numeric. Resolution in dpi for saving (default: \code{300}).
+#' @param ... Additional arguments forwarded to the underlying static or
+#'   interactive plotting helpers (e.g., \code{line_size}, \code{ribbon_alpha},
+#'   \code{show_points}, \code{label_points}).
 #'
 #' @return Invisibly returns the ggplot or plotly object.
 #' @rdname gcomp_out-plot
 #' @method plot gcomp_out
 #' @export
+
 plot.gcomp_out <- function(x,
                            s_vec       = NULL,
                            ref_line    = 0,

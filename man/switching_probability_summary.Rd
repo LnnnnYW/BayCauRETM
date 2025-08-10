@@ -5,7 +5,7 @@
 \alias{print.switching_summary}
 \alias{summary.switching_summary}
 \alias{plot.switching_summary}
-\title{Compute Switching Probability Summary}
+\title{Compute switching-probability summary}
 \usage{
 switching_probability_summary(df, covariates = NULL)
 
@@ -22,49 +22,59 @@ switching_probability_summary(df, covariates = NULL)
 )
 }
 \arguments{
-\item{df}{A data.frame from \code{preprocess_data()}, containing at least:
-\code{pat_id}, \code{k_idx}, \code{A}, \code{Y_prev}, and any additional covariates.}
+\item{df}{A \code{data.frame} from \code{preprocess_data()} (or similarly structured),
+containing at least \code{pat_id}, \code{k_idx}, \code{A}, \code{Y_obs} (if \code{lagYK} is missing),
+and any additional covariates. If \code{k_idx} is missing, it is created as the
+within-subject row index. If \code{lagYK} is missing, it is auto-generated as
+\code{I(lag(Y_obs) > 0)} within subject.}
 
-\item{covariates}{Character vector of covariate names to include in the hazard model,
-or NULL for only \code{Y_prev} and \code{k_idx}.}
+\item{covariates}{Character vector of covariate names to include in the
+hazard model, or \code{NULL} to use only \code{lagYK} and a factorized time index.}
 
 \item{x}{an object used to select a method.}
 
-\item{...}{Passed to \code{ggplot2::geom_boxplot()}.}
+\item{...}{Passed to \code{ggplot2::geom_boxplot()} when \code{type = "boxplot"}.}
 
-\item{object}{Object returned by this function (used by summary method).}
+\item{object}{A \code{switching_summary} object.}
 
-\item{show_mean}{Logical. Whether to overlay the mean curve (default: TRUE).}
+\item{type}{One of \code{"ribbon"} or \code{"boxplot"}. \code{"ribbon"} shows mean with an
+interquartile ribbon (p25-p75); \code{"boxplot"} shows per-interval distributions
+with an optional mean overlay.}
 
-\item{theme_fn}{A ggplot2 theme function.}
+\item{show_mean}{Logical. Whether to overlay the mean curve (default \code{TRUE}).}
+
+\item{theme_fn}{A \strong{ggplot2} theme function (default \code{ggplot2::theme_minimal}).}
 }
 \value{
-An object of class \code{switching_summary}, which is a list with components:
-\describe{
-\item{\code{df2}}{Data.frame including original columns plus:
-\code{hazard} (predicted probability of switching at each interval),
-\code{surv_prob} (probability of not yet switched before each interval),
-\code{switch_prob} (joint probability of surviving to interval and switching at that interval).}
-\item{\code{summary_df}}{Data.frame summarizing \code{switch_prob} by \code{k_idx}:
-mean, median, 5th percentile, 25th, 75th, and 95th percentiles.}
-\item{\code{model}}{The fitted \code{glm} object (family = binomial).}
+An object of class \code{switching_summary}, a list with:
+\itemize{
+\item \strong{df2} - the input data with added columns:
+\code{hazard} (predicted switching probability at each interval),
+\code{surv_prob} (probability of not yet switched before the interval),
+and \code{switch_prob} (joint probability of surviving to the interval and
+switching at that interval).
+\item \strong{summary_df} - data frame summarizing \code{switch_prob} by \code{k_idx}:
+mean, median, 5th/25th/75th/95th percentiles.
+\item \strong{model} - the fitted \code{glm} object (\code{family = binomial}).
 }
 }
 \description{
-Fit a discrete-time logistic hazard model for treatment initiation ("switching"),
-compute subject-level switching probabilities per interval, and summarize by interval.
+Fit a discrete-time logistic hazard model for treatment initiation
+("switching"), compute subject-level switching probabilities per interval,
+and summarize them by interval.
 }
 \details{
-This function fits a logistic regression for the hazard of initiating treatment
-at each discrete interval, then computes for each subject the survival probability
-(not yet switched) and the switching probability at each interval. It returns
-the augmented data.frame and a summary by interval.
+The discrete-time hazard is modeled via \code{glm(A ~ lagYK + factor(k_idx) + covariates, family = binomial)}. After prediction, for each subject the survival
+probability is computed as the cumulative product of \code{(1 - hazard)} lagged by
+one interval; the switching probability at each interval is
+\code{surv_prob * hazard}. If a provided \code{lagYK} is not binary, it is coerced to
+\code{as.numeric(lagYK > 0)}.
 }
 \section{Functions}{
 \itemize{
 \item \code{print(switching_summary)}: Print the summary table of switching probabilities by interval.
 
-\item \code{summary(switching_summary)}: Alias for print.
+\item \code{summary(switching_summary)}: Alias for \code{print()}.
 
 \item \code{plot(switching_summary)}: Plot switching probability over time.
 
@@ -74,7 +84,7 @@ the augmented data.frame and a summary by interval.
 sw <- switching_probability_summary(processed_df, covariates = c("age", "sex"))
 print(sw)       # prints summary_df
 summary(sw)     # same as print
-plot(sw)        # draws boxplot + mean curve
+plot(sw)        # ribbon or boxplot summaries
 }
 
 }

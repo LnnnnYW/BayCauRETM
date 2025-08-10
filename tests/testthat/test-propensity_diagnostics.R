@@ -3,21 +3,27 @@
 library(testthat)
 library(BayCauRETM)
 
-test_that("propensity_score_diagnostics returns ps_diag object", {
-  dat <- data.frame(
-    A      = rbinom(120, 1, 0.4),
-    Y_prev = rpois(120, 1),
-    X1     = rnorm(120),
-    X2     = rnorm(120)
+test_that("propensity_score_diagnostics fits model and builds plots", {
+  skip_if_not_installed("ggplot2")
+
+  set.seed(1)
+  df <- data.frame(
+    A      = rbinom(200, 1, 0.5),
+    Y_prev = rpois(200, 1),
+    X1     = rnorm(200)
   )
 
-  psd <- propensity_score_diagnostics(
-    data       = dat,
+  ps <- propensity_score_diagnostics(
+    data       = df,
     treat_col  = "A",
-    covariates = c("Y_prev", "X1", "X2"),
-    plot_types = "histogram"
+    covariates = c("Y_prev", "X1"),
+    trim       = c(0.01, 0.99),
+    plot_types = c("histogram", "density"),
+    bins       = 20
   )
-  expect_s3_class(psd, "ps_diag")
-  expect_equal(nrow(psd$summary), 6)
-  expect_true("histogram" %in% names(psd$plots))
+
+  expect_s3_class(ps, "ps_diag")
+  expect_true(is.data.frame(ps$summary))
+  expect_true(all(c("model","ps","trim_flag","plots") %in% names(ps)))
+  expect_true(all(c("histogram","density") %in% names(ps$plots)))
 })

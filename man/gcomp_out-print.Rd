@@ -5,8 +5,6 @@
 \title{Print method for g_computation output}
 \usage{
 \method{print}{gcomp_out}(x, ...)
-
-\method{print}{gcomp_out}(x, ...)
 }
 \arguments{
 \item{x}{An object of class \code{gcomp_out}, output of \code{g_computation()}.}
@@ -15,11 +13,8 @@
 }
 \value{
 Invisibly returns a data.frame of the summary.
-
-Invisibly returns a data.frame of the summary.
 }
 \description{
-Print a summary table of causal contrasts delta(s, K+1) for a \code{gcomp_out} object.
-
-Print a summary table of causal contrasts delta(s, K+1) for a \code{gcomp_out} object.
+Print a summary table of causal contrasts \code{delta(s, K+1)} for a
+\code{gcomp_out} object.
 }

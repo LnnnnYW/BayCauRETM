@@ -2,61 +2,45 @@
 % Please edit documentation in R/g_computation.R
 \name{g_computation}
 \alias{g_computation}
-\title{Bayesian g‑Computation for Recurrent‑Event Rate Contrasts}
+\title{Bayesian g-computation for recurrent-event rate contrasts}
 \usage{
 g_computation(Lmat = NULL, fit_out, s_vec, B = 50, cores = 1)
 }
 \arguments{
-\item{fit_out}{Output list from \code{\link{fit_causal_recur}}.}
+\item{Lmat}{Optional baseline design matrix for level/lag effects; if NULL,
+it is built from the first row per subject and the right-hand side of
+\code{fit_out$design_info$formula_T} (no intercept).}
 
-\item{s_vec}{Integer vector of treatment‑start intervals.}
+\item{fit_out}{Output list from \code{\link[=fit_causal_recur]{fit_causal_recur()}}.}
 
-\item{B}{Number of Monte‑Carlo replicates per posterior draw (default
-\code{50}).}
+\item{s_vec}{Integer vector of treatment-start intervals.}
+
+\item{B}{Integer. Number of Monte Carlo replicates per posterior draw (default 50).}
+
+\item{cores}{Integer. If > 1, simulate in parallel via \code{parallel::parLapply()}.}
 }
 \value{
-An object of class \code{gcomp_out}, a list with components:
-\describe{
-\item{R_mat}{Numeric matrix with one row per posterior draw and one
-column per treatment strategy (the last column is “never treat”,
-\code{s = K + 1}).  Each entry is the Dirichlet‑weighted mean event
-rate under that strategy.}
-\item{delta}{Named list of length \code{length(s_vec)}.  Each element
-contains the posterior draws of \eqn{\Delta(s)=R(s)-R(K+1)} together
-with its mean and 95\% equal‑tail interval.}
-}
+A \code{gcomp_out} list with two components:
+\code{R_mat} (rows = posterior draws, columns = strategies \verb{s = 1..K, K+1} for
+never treat) and \code{delta} (named list with draws and summaries of
+\code{Delta(s) = R(s) - R(K+1)}).
 }
 \description{
-Perform Bayesian g‑computation to estimate average recurrent‑event
-rates under different treatment–initiation times versus never treating,
-using the \strong{teacher‑style} model parameters returned by
-\code{\link{fit_causal_recur}}.
+Estimate average recurrent-event rates under different treatment-start times
+versus never treating, using teacher-style parameters from \code{\link[=fit_causal_recur]{fit_causal_recur()}}.
 }
 \details{
-For each posterior draw \eqn{m=1,\dots,M} the algorithm:
-\enumerate{
-\item Generates Dirichlet weights across subjects (to mimic the Bayesian
-bootstrap).
-\item For every treatment start time \eqn{s\in s\_vec} \emph{and} for the
-“never‑treat” strategy (\eqn{s=K+1}) it calls an internal simulator
-that propagates the teacher‑style parameters
-\eqn{\{\beta_0(k),\beta_1,\beta_L,\theta_0(k),\theta_1,\theta_L,
-        \theta_{\mathrm{lag}}\}} over \eqn{B} replicate paths of
-death/recurrent events.
-\item Computes the subject‑level mean event rate in each replicate, then
-Dirichlet‑averages those rates to obtain \eqn{R_m(s)}.
-\item Stores all \eqn{R_m(s)} and their contrasts
-\eqn{\Delta_m(s)=R_m(s)-R_m(K+1)}.
-}
-
-S3 methods \code{print}, \code{summary}, and \code{plot} are available; e.g.
-\code{print(gcomp_out)}, \code{plot(gcomp_out,interactive=TRUE)}.
+For each posterior draw, the algorithm draws Dirichlet weights over subjects,
+simulates B replicated paths under each strategy using the teacher-style
+parameters (logistic death hazard; Poisson log-mean for recurrent counts with
+an optional lag term), averages subject-level rates with the Dirichlet weights,
+and stores the contrasts \code{Delta(s)}.
 }
 \examples{
-\dontrun{
-gcomp_out <- g_computation(fit_out = fit, s_vec = 1:K, B = 20)
-print(gcomp_out)
-plot(gcomp_out, ref_line = 0)
+\donttest{
+# g <- g_computation(fit_out = fit, s_vec = 1:K, B = 20)
+# print(g)
+# plot(g, ref_line = 0)
 }
 
 }

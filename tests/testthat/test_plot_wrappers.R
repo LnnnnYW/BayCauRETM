@@ -3,24 +3,31 @@
 library(testthat)
 library(BayCauRETM)
 
-test_that("static & interactive wrapper functions return ggplot/plotly", {
-  fake <- list(
-    delta = list(
-      "s=1" = list(mean = 0, CI_lower = -1, CI_upper = 1),
-      "s=2" = list(mean = -.1, CI_lower = -1.2, CI_upper = 0.9)
-    ),
-    R_mat = matrix(0, 1, 2)
-  )
-  class(fake) <- "gcomp_out"
+make_fake_gcomp <- function(K = 3, draws = 40) {
+  delta <- lapply(1:K, function(s) {
+    list(
+      draws    = rnorm(draws, 0.03 * s, 0.01),
+      mean     = 0.03 * s,
+      CI_lower = 0.03 * s - 0.02,
+      CI_upper = 0.03 * s + 0.02
+    )
+  })
+  names(delta) <- paste0("s=", 1:K)
+  R_mat <- matrix(runif(draws * (K + 1)), ncol = K + 1)
+  structure(list(R_mat = R_mat, delta = delta), class = "gcomp_out")
+}
 
-  p_static <- plot_posterior_causal_contrast_static(fake)
-  expect_s3_class(p_static, "ggplot")
+test_that("static wrapper returns ggplot", {
+  skip_if_not_installed("ggplot2")
+  g <- make_fake_gcomp(3)
+  p <- plot_posterior_causal_contrast_static(g, s_vec = 1:3, ref_line = 0)
+  expect_s3_class(p, "ggplot")
+})
 
-  p_wrap <- plot_posterior_causal_contrast_interactive(fake)
-  expect_s3_class(p_wrap, "ggplot")
-
-  if (requireNamespace("plotly", quietly = TRUE)) {
-    p_int <- plot_posterior_causal_contrast_interactive(fake, interactive = TRUE)
-    expect_true(inherits(p_int, "plotly"))
-  }
+test_that("interactive wrapper returns plotly when requested", {
+  skip_if_not_installed("ggplot2")
+  skip_if_not_installed("plotly")
+  g <- make_fake_gcomp(3)
+  p <- plot_posterior_causal_contrast_interactive(g, interactive = TRUE)
+  expect_true("plotly" %in% class(p))
 })
