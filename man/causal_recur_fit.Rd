@@ -20,7 +20,6 @@ fit_causal_recur(
   prior = NULL,
   num_chains = 4,
   iter = 2000,
-  stan_model_file = system.file("stan", "causal_recur_model.rds", package = "BayCauRETM"),
   control = list(adapt_delta = 0.95, max_treedepth = 15),
   cores = 1,
   verbose = TRUE,
@@ -73,10 +72,6 @@ Missing entries fall back to internal defaults.}
 \item{iter}{Integer. Total iterations \emph{per} chain including warm-up
 (default \code{2000}).}
 
-\item{stan_model_file}{Path to a \strong{pre-compiled} Stan model object saved
-via \code{saveRDS()} (default \code{"inst/stan/causal_recur_model.rds"}). The file
-must exist; otherwise the function stops.}
-
 \item{control}{List passed to \code{rstan::sampling()} (e.g.,
 \code{list(adapt_delta = 0.95, max_treedepth = 15)}).}
 
@@ -98,6 +93,10 @@ of \code{I(Y_obs > 0)}. If the column already exists, it is left unchanged.}
 \item{object}{A \code{causal_recur_fit} object.}
 
 \item{pars_to_report}{Character vector of parameter names (regex allowed).}
+
+\item{stan_model_file}{Path to a \strong{pre-compiled} Stan model object saved
+via \code{saveRDS()} (default \code{"inst/stan/causal_recur_model.rds"}). The file
+must exist; otherwise the function stops.}
 }
 \value{
 An object of class \code{causal_recur_fit} (list) with elements

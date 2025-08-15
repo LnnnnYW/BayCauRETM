@@ -1,0 +1,142 @@
+---
+title: "Bayesian Causal Inference for Recurrent Events with Timing Misalignment"
+author: "Yuqin"
+date: "2025-08-15"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = TRUE)
+library(BayCauRETM)
+library(dplyr)
+library(tidyr)
+library(rstan)
+library(parallel)
+library(rstudioapi)
+set.seed(42)
+setwd(dirname(getActiveDocumentContext()$path))
+```
+
+This Markdown of the Bayesian framework was proposed by Oganisian et al. (2024) for causal inference with recurrent events subject to timing misalignment. We use a semiparametric Bayesian model to estimate the average causal effect of a time-varying treatment on the recurrent event rate, accounting for terminal events and censoring.
+
+## 1. Setup
+We configure Stan and set parallelization options for efficient MCMC sampling.
+```{r}
+use_multicore <- TRUE   # FALSE for single core
+if (use_multicore) {
+  cores <- max(1, detectCores() - 2)
+} else {
+  cores <- 1
+}
+options(mc.cores = cores)
+rstan_options(auto_write = TRUE)
+
+warmup <- 500
+M      <- 500
+iter   <- warmup + M
+B      <- 50
+s_vec  <- c(3, 6, 9)
+```
+
+## 2. Data Preprocessing
+This step prepares the longitudinal dataset for analysis, including normalization and handling of missing values.
+```{r}
+load("data.Rdata")
+df_fit <- df %>%
+  filter(id %in% 1:100) %>%
+  arrange(id, k) %>%
+  mutate(k_fac = as.integer(factor(k, levels = sort(unique(k))))) %>%
+  group_by(id) %>%
+  mutate(
+    lagYk = if ("lagYk" %in% names(.)) replace_na(lagYk, 0) else lag(Yk, default = 0)
+  ) %>%
+  ungroup() %>%
+  drop_na(Tk, Yk, Ak, L.1, L.2) %>%
+  mutate(
+    L.1 = as.numeric(scale(L.1)),
+    L.2 = as.numeric(scale(L.2))
+  )
+K <- length(unique(df_fit$k_fac))
+```
+
+## 3. Bayesian Model Fitting
+We now fit the joint model for the recurrent events and terminal process using Stan.
+```{r}
+# Stan fit
+fit <- fit_causal_recur(
+  data      = df_fit,
+  K         = K,
+  id_col    = "id",
+  time_col  = "k_fac",
+  treat_col = "Ak",
+  lag_col   = "lagYk",
+  formula_T = Tk ~ Ak + I(lagYk^2) + L.1 + L.2,
+  formula_Y = Yk ~ Ak + I(lagYk^2) + L.1 + L.2,
+  cores     = cores,
+  verbose   = TRUE
+)
+```
+
+## 4. MCMC Diagnostics
+Evaluate convergence and identify any problematic chains.
+```{r}
+# MCMC Diagnosis
+message("Checking convergence...")
+rstan::check_hmc_diagnostics(fit$stan_fit)
+diag <- mcmc_diagnosis(fit, pars_to_check = c("beta0","beta1","theta0","theta1","theta_lag"))
+plot(diag)
+```
+
+## 5. G-Computation
+We simulate potential outcomes under hypothetical treatment strategies to estimate causal contrasts.
+```{r}
+baseline_df <- fit$data_preprocessed %>%
+  group_by(pat_id) %>%
+  slice_min(order_by = k_idx, n = 1) %>%
+  arrange(pat_id) %>%
+  ungroup()
+
+message("Running g-computation...")
+gcomp <- g_computation(
+  fit_out = fit,
+  s_vec   = s_vec,
+  B       = B,
+  cores   = cores
+)
+
+print(gcomp)
+plot(gcomp, ref_line = 0)
+plot(gcomp, interactive = TRUE, ref_line = 0)
+```
+
+## 6. Propensity Score Diagnostics
+Assess overlap and positivity for model validity.
+```{r}
+ps_diag <- propensity_score_diagnostics(
+  fit$data_preprocessed,
+  treat_col = "A",
+  covariates = c("lagYk","k_idx")
+)
+plot(ps_diag, type = "histogram")
+plot(ps_diag, type = "density")
+```
+
+## 7. Switching Probability Summary
+Visualize the probability of treatment switching across time intervals.
+```{r}
+sw_diag <- switching_probability_summary(fit$data_preprocessed)
+plot(sw_diag, type = "boxplot")
+```
+
+## 8. Summary of Causal Estimates
+This table summarizes posterior distributions of model parameters and g-computation estimates.
+```{r}
+sum_tbl <- result_summary_table(
+  fit_out   = fit,
+  gcomp_out = gcomp,
+  s_vec     = s_vec,
+  format    = "kable",
+  pars_to_report = c("beta0","beta1","theta0","theta1","theta_lag")
+)
+print(sum_tbl)
+```

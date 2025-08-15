@@ -113,13 +113,16 @@ fit_causal_recur <- function(
     formula_T, formula_Y,
     prior = NULL,
     num_chains = 4, iter = 2000,
-    stan_model_file = system.file("stan", "causal_recur_model.rds",
-                                   package = "BayCauRETM"),
     control = list(adapt_delta = 0.95, max_treedepth = 15),
     cores = 1,
     verbose = TRUE,
     lag_col = NULL
 ) {
+  stan_model_file <- system.file("stan", "causal_recur_model.rds", package = "BayCauRETM")
+  if (!nzchar(stan_model_file) || !file.exists(stan_model_file)) {
+    stop("Stan model file not found at: ", stan_model_file)
+  }
+
   if (is.null(prior)) {
     prior <- list(
       eta_beta = 0,  sigma_beta = 0.7,  rho_beta = 0.6,
@@ -129,6 +132,7 @@ fit_causal_recur <- function(
       sigma_theta_lag = 0.5
     )
   }
+
   need_cols <- c(id_col, time_col, treat_col)
   if (any(miss <- !need_cols %in% names(data)))
     stop("Columns not found: ", paste(need_cols[miss], collapse = ", "))
@@ -143,21 +147,20 @@ fit_causal_recur <- function(
   df$Y_obs  <- df[[count_col]]
   df$pat_id <- df[[id_col]]
   df$k_idx  <- df[[time_col]]
-
-  df$A <- df[[treat_col]]
+  df$A      <- df[[treat_col]]
 
   if (is.null(lag_col)) {
     lag_col <- "lagYk"
     df[[lag_col]] <- 0
   }
 
-  prep <- preprocess_data(df, K = K, lag_col = lag_col)
-  df   <- prep$processed_df
+  prep  <- preprocess_data(df, K = K, lag_col = lag_col)
+  df    <- prep$processed_df
   n_pat <- prep$n_pat
 
-  k1_mask   <- df$k_idx == 1
-  df_Y1     <- df[k1_mask, ]
-  df_Yk     <- df[!k1_mask, ]
+  k1_mask <- df$k_idx == 1
+  df_Y1   <- df[k1_mask, ]
+  df_Yk   <- df[!k1_mask, ]
 
   NTk <- nrow(df)
   NY1 <- nrow(df_Y1)
@@ -168,6 +171,7 @@ fit_causal_recur <- function(
   X_base <- matrix(0, NY1, 0)
   L_Yk   <- matrix(0, NYk, 0)
 
+  `%||%` <- function(x, y) if (is.null(x)) y else x
   get_rhs <- function(f) attr(terms(f), "term.labels") %||% character(0)
   tv_terms_T <- setdiff(get_rhs(formula_T), treat_col)
   tv_terms_Y <- setdiff(get_rhs(formula_Y), treat_col)
@@ -179,6 +183,7 @@ fit_causal_recur <- function(
     storage.mode(mm) <- "double"
     mm
   }
+
   Lag_Tk <- build_mm(tv_terms_T, df)
   Lag_Yk <- build_mm(tv_terms_Y, df_Yk)
 
@@ -228,19 +233,23 @@ fit_causal_recur <- function(
     sigma_theta_lag = prior_use$sigma_theta_lag
   )
 
-  if (!file.exists(stan_model_file))
-    stop("Stan model file doesn't exist: ", stan_model_file)
-
-  if (verbose) message("Loading pre-compiled Stan model...")
+  if (verbose) message("Loading pre-compiled Stan model from: ", stan_model_file)
   stan_mod <- readRDS(stan_model_file)
+  if (!inherits(stan_mod, "stanmodel")) {
+    stop("The RDS at ", stan_model_file, " is not a 'stanmodel' object. Got class: ",
+         paste(class(stan_mod), collapse = ", "))
+  }
 
-  if (verbose) message(sprintf("Sampling (%d chains * %d iter, cores=%d)...",
-                               num_chains, iter, cores))
+  if (verbose) {
+    message(sprintf("Sampling (%d chains * %d iter, cores=%d)...",
+                    num_chains, iter, cores))
+  }
 
   stan_fit <- rstan::sampling(
-    stan_mod, data = stan_data,
+    object = stan_mod,
+    data   = stan_data,
     chains = num_chains, iter = iter,
-    cores = cores, seed = 1234,
+    cores  = cores, seed = 1234,
     control = control
   )
 
@@ -262,6 +271,7 @@ fit_causal_recur <- function(
     class = c("causal_recur_fit", "list")
   )
 }
+
 
 
 
