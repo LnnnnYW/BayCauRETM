@@ -56,7 +56,7 @@ fit <- fit_causal_recur(
 # 2) MCMC Diagnosis
 message("Checking convergence...")
 rstan::check_hmc_diagnostics(fit$stan_fit)
-diag <- mcmc_diagnosis(fit, pars_to_check = c("beta0","beta1","theta0","theta1","theta_lag"))
+diag <- mcmc_diagnosis(fit)
 plot(diag)
 
 baseline_df <- fit$data_preprocessed %>%
@@ -96,8 +96,7 @@ sum_tbl <- result_summary_table(
   fit_out   = fit,
   gcomp_out = gcomp,
   s_vec     = s_vec,
-  format    = "kable",
-  pars_to_report = c("beta0","beta1","theta0","theta1","theta_lag")
+  format    = "kable"
 )
 print(sum_tbl)
 
