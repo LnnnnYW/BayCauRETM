@@ -70,8 +70,8 @@ fit <- fit_causal_recur(
   time_col  = "k_fac",
   treat_col = "Ak",
   lag_col   = "lagYk",
-  formula_T = Tk ~ Ak + lagYk + L.1 + L.2,
-  formula_Y = Yk ~ Ak + lagYk + L.1 + L.2,
+  formula_T = Tk ~ Ak + I(lagYk^2) + L.1 + L.2,
+  formula_Y = Yk ~ Ak + I(lagYk^2) + L.1 + L.2,
   cores     = cores,
   verbose   = TRUE
 )
@@ -83,7 +83,7 @@ Evaluate convergence and identify any problematic chains.
 # MCMC Diagnosis
 message("Checking convergence...")
 rstan::check_hmc_diagnostics(fit$stan_fit)
-diag <- mcmc_diagnosis(fit, pars_to_check = c("beta0","beta1","theta0","theta1","theta_lag"))
+diag <- mcmc_diagnosis(fit)
 plot(diag)
 ```
 
@@ -135,8 +135,7 @@ sum_tbl <- result_summary_table(
   fit_out   = fit,
   gcomp_out = gcomp,
   s_vec     = s_vec,
-  format    = "kable",
-  pars_to_report = c("beta0","beta1","theta0","theta1","theta_lag")
+  format    = "kable"
 )
 print(sum_tbl)
 ```
