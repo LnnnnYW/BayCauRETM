@@ -51,7 +51,6 @@ utils::globalVariables(c(
 #' @importFrom dplyr arrange mutate group_by ungroup count filter select all_of
 #' @importFrom tidyr complete fill
 #' @keywords internal
-#' @noRd
 #'
 #' Preprocess data for causal_recur
 #' @name preprocess_data
