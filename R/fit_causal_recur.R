@@ -1,36 +1,43 @@
 # fit_causal_recur
 
-#' Fit Bayesian Causal Recurrent and Terminal‑Event Model
+#' Fit Bayesian Causal Recurrent and Terminal-Event Model
 #'
 #' @description
-#' Fits a discrete‑time Bayesian model for recurrent event counts and a terminal
-#' event (death) using gAR(1) smoothing priors on the time‑varying intercepts.
+#' Fits a discrete-time Bayesian model for recurrent event counts and a terminal
+#' event (death) using gAR(1) smoothing priors on the time-varying intercepts.
 #'
-#' @param data A **long‑format** `data.frame` that contains the user‑named
+#' @param data A **long-format** `data.frame` that contains the user-named
 #'   identifier, time index, treatment, outcome, and any covariate columns.
 #'   These names are supplied via `id_col`, `time_col`, `treat_col`, plus the
-#'   left‑hand sides of `formula_T` and `formula_Y`.
+#'   left-hand sides of `formula_T` and `formula_Y`.
 #' @param K Integer. Total number of discrete intervals in the study.
 #' @param id_col Character scalar. Column name holding the **subject ID**.
 #' @param time_col Character scalar. Column name holding the **discrete time
 #'   index** (`1,...,K`).
 #' @param treat_col Character scalar. Column name holding the **treatment
 #'   indicator** (`0/1`).
-#' @param x_cols Character vector of additional (static or time‑varying)
+#' @param x_cols Character vector of additional (static or time-varying)
 #'   covariate names to keep; `NULL` if none.
-#' @param formula_T A formula for the terminal‑event (death) sub‑model, e.g.
+#' @param formula_T A formula for the terminal-event (death) sub-model, e.g.
 #'   `death_flag ~ Y_prev + A + k_idx`.
-#' @param formula_Y A formula for the recurrent‑count sub‑model, e.g.
+#' @param formula_Y A formula for the recurrent-count sub-model, e.g.
 #'   `event_count ~ Y_prev + A + k_idx`.
 #' @param prior Named list of gAR(1) hyperparameters with elements
 #'   `eta_beta`, `sigma_beta`, `rho_beta`, `eta_gamma`, `sigma_gamma`,
 #'   `rho_gamma`.
 #' @param num_chains Integer. Number of MCMC chains (default `4`).
-#' @param iter Integer. Total iterations *per* chain including warm‑up
+#' @param iter Integer. Total iterations *per* chain including warm-up
 #'   (default `2000`).
-#' @param stan_model_file Optional path to a pre‑compiled Stan model.
-#'   If `NULL`, the package‑internal teacher‑style model is used.
+#' @param stan_model_file Optional path to a pre-compiled Stan model.
+#'   If `NULL`, the package-internal teacher-style model is used.
 #' @param control List passed to Stan sampling (see **rstan** docs).
+#' @param cores Integer. Number of CPU cores to use for parallel sampling
+#'  (default `1`).
+#' @param lag_col Character scalar. Name of the column to hold the lagged
+#' @param object An object of class `causal_recur_fit` (list) returned by
+#'  `fit_causal_recur()`.
+#' @param pars_to_report Character vector of parameter names to report in
+#'  `summary()`.
 #' @param verbose Logical. Print progress messages (default `TRUE`).
 #' @inheritParams base::print
 #'
@@ -41,11 +48,11 @@
 #' @details
 #' Internally the function
 #' 1. Copies `id_col`, `time_col`, and `treat_col` into the canonical names
-#'    `pat_id`, `k_idx`, and `A`, and copies the outcomes named on the left‑hand
+#'    `pat_id`, `k_idx`, and `A`, and copies the outcomes named on the left-hand
 #'    sides of `formula_T` / `formula_Y` into `T_obs` / `Y_obs`;
 #' 2. Calls [preprocess_data()] to fill missing intervals, create lagged
 #'    variables, and run basic checks;
-#' 3. Builds teacher‑style standata, compiles the Stan model, and runs MCMC
+#' 3. Builds teacher-style standata, compiles the Stan model, and runs MCMC
 #'    sampling via **rstan**.
 #'
 #' @examples
@@ -200,7 +207,7 @@ fit_causal_recur <- function(
   if (verbose) message("Loading pre-compiled Stan model...")
   stan_mod <- readRDS(stan_model_file)
 
-  if (verbose) message(sprintf("Sampling (%d chains × %d iter, cores=%d)...",
+  if (verbose) message(sprintf("Sampling (%d chains x %d iter, cores=%d)...",
                                num_chains, iter, cores))
 
   stan_fit <- rstan::sampling(
