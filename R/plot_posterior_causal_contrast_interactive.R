@@ -5,12 +5,17 @@
 #' \code{\link{plot_posterior_causal_contrast_static}}, optionally saves it, and
 #' optionally converts it to an interactive Plotly object.
 #'
-#' @inheritParams plot_posterior_causal_contrast_static
+#' @param contrast_list List of posterior contrasts from
+#' @param s_vec Optional vector of treatment levels to plot.
+#' @param theme_fn Function to apply a ggplot2 theme (default is
+#'  \code{theme_minimal}).
+#' @param point_size Numeric; size of points in the plot (default 3).
+#' @param error_width Numeric; width of error bars (default 0.15).
+#' @param ref_line Optional reference line value (default NULL, no line).
 #' @param interactive Logical; if TRUE return a Plotly object.
 #' @param save_file Optional filename to save static plot (PNG/PDF, etc.).
-#' @param line_size Numeric; width of the mean line (default 1).
 #' @param width,height,dpi Device settings when saving.
-#' @param ribbon_alpha Numeric in 0 to 1; transparency of credible-interval
+#' @param ... Additional arguments passed to
 #'
 #' @return ggplot or plotly object.
 #'

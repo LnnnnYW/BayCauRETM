@@ -20,17 +20,18 @@ plot_posterior_causal_contrast_interactive(
 )
 }
 \arguments{
-\item{contrast_list}{Either a single \code{gcomp_out} object or \strong{named} list
-of such objects to compare several scenarios side-by-side.}
+\item{contrast_list}{List of posterior contrasts from}
 
-\item{s_vec}{Integer vector of start intervals to include.  If \code{NULL}
-(default) all intervals contained in \code{$delta} are plotted.}
+\item{s_vec}{Optional vector of treatment levels to plot.}
 
-\item{theme_fn}{A ggplot2 theme function (default
-\code{ggplot2::theme_minimal}).}
+\item{theme_fn}{Function to apply a ggplot2 theme (default is
+\code{theme_minimal}).}
 
-\item{ref_line}{Numeric or \code{NULL}; if numeric, draws a horizontal dashed
-line at that \emph{y}.  Typical use \code{ref_line = 0}.}
+\item{point_size}{Numeric; size of points in the plot (default 3).}
+
+\item{error_width}{Numeric; width of error bars (default 0.15).}
+
+\item{ref_line}{Optional reference line value (default NULL, no line).}
 
 \item{interactive}{Logical; if TRUE return a Plotly object.}
 
@@ -38,9 +39,7 @@ line at that \emph{y}.  Typical use \code{ref_line = 0}.}
 
 \item{width, height, dpi}{Device settings when saving.}
 
-\item{line_size}{Numeric; width of the mean line (default 1).}
-
-\item{ribbon_alpha}{Numeric in 0 to 1; transparency of credible-interval}
+\item{...}{Additional arguments passed to}
 }
 \value{
 ggplot or plotly object.
