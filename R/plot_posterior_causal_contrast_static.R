@@ -11,13 +11,11 @@
 #'   (default) all intervals contained in \code{$delta} are plotted.
 #' @param theme_fn A ggplot2 theme function (default
 #'   \code{ggplot2::theme_minimal}).
-#' @param line_size Numeric; width of mean line (default 1).
-#' @param ribbon_alpha Numeric in 0 to 1; transparency of credible-interval
-#'   ribbons (default 0.3).
-#' @param show_points Logical; draw points at each \eqn{s}? (default \code{TRUE}).
-#' @param label_points Logical; annotate mean value at points? (default \code{FALSE}).
+#' @param point_size Numeric; size of points in the plot (default 3).
+#' @param error_width Numeric; width of error bars (default 0.15).
 #' @param ref_line Numeric or \code{NULL}; if numeric, draws a horizontal dashed
 #'   line at that \emph{y}.  Typical use \code{ref_line = 0}.
+#' @param ... Additional arguments passed to \code{theme_fn}.
 #'
 #' @return A \link[ggplot2]{ggplot} object.
 #' @export
