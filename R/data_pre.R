@@ -53,7 +53,7 @@ utils::globalVariables(c(
 #' @keywords internal
 #' @noRd
 #'
-#' @name data_pre          # <- Rd topic becomes 'data_pre'
+#' @name preprocess_data
 #' @aliases preprocess_data
 #' @export
 

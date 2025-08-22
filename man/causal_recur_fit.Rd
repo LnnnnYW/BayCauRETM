@@ -89,9 +89,6 @@ If \code{NULL}, the package-internal teacher-style model is used.}
 
 \item{pars_to_report}{Character vector of parameter names to report in
 \code{summary()}.}
-
-\item{x_cols}{Character vector of additional (static or time-varying)
-covariate names to keep; \code{NULL} if none.}
 }
 \value{
 An object of class \code{causal_recur_fit} (list) with elements
