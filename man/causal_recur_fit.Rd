@@ -97,7 +97,7 @@ Internally the function
 \item Copies \code{id_col}, \code{time_col}, and \code{treat_col} into the canonical names
 \code{pat_id}, \code{k_idx}, and \code{A}, and copies the outcomes named on the left‑hand
 sides of \code{formula_T} / \code{formula_Y} into \code{T_obs} / \code{Y_obs};
-\item Calls \code{\link[=preprocess_data]{preprocess_data()}} to fill missing intervals, create lagged
+\item Calls \code{\link[=data_pre]{preprocess_data()}} to fill missing intervals, create lagged
 variables, and run basic checks;
 \item Builds teacher‑style standata, compiles the Stan model, and runs MCMC
 sampling via \strong{rstan}.
