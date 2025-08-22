@@ -14,7 +14,9 @@ utils::globalVariables(c(
 #'        columns `pat_id`, `k_idx`, `Y_obs`, `T_obs`, `A`, plus any additional
 #'        covariates.
 #' @param K  Integer. Total number of discrete intervals per subject.
-#' @param x_cols Character vector of additional covariate column names, or `NULL`.
+#' @param lag_col Optional character string. If specified, the function will
+#'  #'        create a lagged variable `lag_col` based on the previous value of
+#'  #'        `Y_obs` (i.e., `lag_col = "Y_prev"` will create `Y_prev`).
 #'
 #' @return A list with components:
 #'   * **processed_df** – The input data with filled‑in intervals, lagged

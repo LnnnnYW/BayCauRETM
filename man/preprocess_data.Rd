@@ -13,7 +13,9 @@ covariates.}
 
 \item{K}{Integer. Total number of discrete intervals per subject.}
 
-\item{x_cols}{Character vector of additional covariate column names, or \code{NULL}.}
+\item{lag_col}{Optional character string. If specified, the function will
+#'        create a lagged variable \code{lag_col} based on the previous value of
+#'        \code{Y_obs} (i.e., \code{lag_col = "Y_prev"} will create \code{Y_prev}).}
 }
 \value{
 A list with components:
