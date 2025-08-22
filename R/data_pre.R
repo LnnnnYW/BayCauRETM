@@ -53,9 +53,11 @@ utils::globalVariables(c(
 #' @keywords internal
 #' @noRd
 #'
+#' Preprocess data for causal_recur
 #' @name preprocess_data
-#' @aliases preprocess_data
-#' @export
+#' @rdname preprocess_data
+#' @description Fills missing intervals, creates lags, and runs basic checks.
+#' @keywords internal   # keep it off the index if you like
 preprocess_data <- function(df, K, lag_col = NULL) {
   stopifnot(is.data.frame(df))
   stopifnot(is.numeric(K), length(K) == 1, K >= 1)
