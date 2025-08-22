@@ -54,7 +54,6 @@ utils::globalVariables(c(
 #' @noRd
 #'
 #' @name preprocess_data
-#' @aliases preprocess_data
 #' @export
 
 preprocess_data <- function(df, K, lag_col = NULL) {
