@@ -42,9 +42,16 @@ using \code{plot_prefix}.}
 \item{positivity}{Logical; if \code{TRUE}, perform additional positivity
 diagnostics on treatment assignment (default \code{FALSE}).}
 
+\item{ps_covariates}{Character vector of additional covariate names to use in
+the propensity score model when \code{positivity = TRUE}.}
+
 \item{x}{an object used to select a method.}
 
 \item{...}{further arguments passed to or from other methods.}
+
+\item{object}{An object of class \code{mcmc_diag}.}
+
+\item{pars}{Character vector of parameter names to filter the plots.}
 }
 \value{
 An object of class \code{mcmc_diag}, a list with components:
