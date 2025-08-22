@@ -52,6 +52,10 @@ utils::globalVariables(c(
 #' @importFrom tidyr complete fill
 #' @keywords internal
 #' @noRd
+#'
+#' @name data_pre          # <- Rd topic becomes 'data_pre'
+#' @aliases preprocess_data
+#' @export
 
 preprocess_data <- function(df, K, lag_col = NULL) {
   stopifnot(is.data.frame(df))
