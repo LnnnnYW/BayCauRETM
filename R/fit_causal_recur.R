@@ -32,10 +32,6 @@
 #' @param cores Integer. Number of CPU cores to use for parallel sampling
 #'  (default `1`).
 #' @param lag_col Character scalar. Name of the column to hold the lagged
-#' @param object An object of class `causal_recur_fit` (list) returned by
-#'  `fit_causal_recur()`.
-#' @param pars_to_report Character vector of parameter names to report in
-#'  `summary()`.
 #' @param verbose Logical. Print progress messages (default `TRUE`).
 #' @inheritParams base::print
 #'
@@ -254,6 +250,10 @@ print.causal_recur_fit <- function(x, ...) {
 
 #' @describeIn causal_recur_fit Summarise posterior estimates
 #' @method summary causal_recur_fit
+#' @param object An object of class `causal_recur_fit` (list) returned by
+#'  `fit_causal_recur()`.
+#' @param pars_to_report Character vector of parameter names to report in
+#'  `summary()`.
 #' @export
 summary.causal_recur_fit <- function(object,
                                      pars_to_report = c("beta1", "theta1", "thetaLag",

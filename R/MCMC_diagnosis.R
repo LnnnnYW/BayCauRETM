@@ -19,6 +19,8 @@
 #' @param plot_prefix Filename prefix for saved plots (default: `"traceplot_"`).
 #' @param positivity Logical; if `TRUE`, perform additional positivity
 #'   diagnostics on treatment assignment (default `FALSE`).
+#' @param ps_covariates Character vector of additional covariate names to use in
+#'  the propensity score model when `positivity = TRUE`.
 #' @inheritParams base::print
 #'
 #' @return An object of class `mcmc_diag`, a list with components:
@@ -148,12 +150,14 @@ print.mcmc_diag <- function(x, ...) {
 
 #' @describeIn mcmc_diag Same as \code{print()} for a \code{mcmc_diag} object.
 #' @method summary mcmc_diag
+#' @param object An object of class \code{mcmc_diag}.
 #' @export
 summary.mcmc_diag <- function(object, ...) {
   print(object)
 }
 
 #' @describeIn mcmc_diag Display stored trace‑plots; optionally filter by \code{pars}.
+#' @param pars Character vector of parameter names to filter the plots.
 #' @export
 plot.mcmc_diag <- function(x, pars = NULL, ...) {
   plots <- x$plots
