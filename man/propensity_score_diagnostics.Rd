@@ -28,6 +28,8 @@ For example, \code{c(0.01, 0.99)} flags observations with PS below 1\% or above 
 Default is \code{c("histogram", "density")}.}
 
 \item{bins}{Integer. Number of bins for the histogram (default: 30).}
+
+\item{auto_lag}{Logical. If \code{TRUE} and \code{covariates} includes "lagYK" but it is not found in \code{data},}
 }
 \value{
 An object of class \code{ps_diag}, a list with components:

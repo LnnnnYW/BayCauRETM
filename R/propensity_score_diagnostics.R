@@ -30,6 +30,7 @@ utils::globalVariables(c("ps", "trim_flag"))
 #' @param plot_types Character vector. Which plots to produce; subset of \code{c("histogram", "density")}.
 #'   Default is \code{c("histogram", "density")}.
 #' @param bins Integer. Number of bins for the histogram (default: 30).
+#' @param auto_lag Logical. If \code{TRUE} and \code{covariates} includes "lagYK" but it is not found in \code{data},
 #'
 #' @return An object of class \code{ps_diag}, a list with components:
 #'   \describe{
