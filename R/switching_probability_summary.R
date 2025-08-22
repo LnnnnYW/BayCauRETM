@@ -175,6 +175,8 @@ summary.switching_summary <- function(object, ...) {
 # plot
 
 #' @describeIn switching_probability_summary Plot switching probability over time.
+#' @param type       Character. Type of plot: "ribbon" for mean with CI ribbon,
+#'  "boxplot" for boxplot of switching probabilities by interval.
 #' @param show_mean Logical. Whether to overlay the mean curve (default: TRUE).
 #' @param theme_fn  A ggplot2 theme function.
 #' @param ...       Passed to \code{ggplot2::geom_boxplot()}.

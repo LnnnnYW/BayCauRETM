@@ -34,6 +34,9 @@ or NULL for only \code{Y_prev} and \code{k_idx}.}
 
 \item{object}{Object returned by this function (used by summary method).}
 
+\item{type}{Character. Type of plot: "ribbon" for mean with CI ribbon,
+"boxplot" for boxplot of switching probabilities by interval.}
+
 \item{show_mean}{Logical. Whether to overlay the mean curve (default: TRUE).}
 
 \item{theme_fn}{A ggplot2 theme function.}
