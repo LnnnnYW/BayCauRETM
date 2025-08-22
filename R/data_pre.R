@@ -55,7 +55,6 @@ utils::globalVariables(c(
 #'
 #' @name preprocess_data
 #' @export
-
 preprocess_data <- function(df, K, lag_col = NULL) {
   stopifnot(is.data.frame(df))
   stopifnot(is.numeric(K), length(K) == 1, K >= 1)
