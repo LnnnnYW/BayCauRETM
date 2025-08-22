@@ -16,8 +16,6 @@
 #'   index** (`1,...,K`).
 #' @param treat_col Character scalar. Column name holding the **treatment
 #'   indicator** (`0/1`).
-#' @param x_cols Character vector of additional (static or time-varying)
-#'   covariate names to keep; `NULL` if none.
 #' @param formula_T A formula for the terminal-event (death) sub-model, e.g.
 #'   `death_flag ~ Y_prev + A + k_idx`.
 #' @param formula_Y A formula for the recurrent-count sub-model, e.g.
