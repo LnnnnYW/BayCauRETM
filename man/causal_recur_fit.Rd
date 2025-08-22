@@ -7,8 +7,7 @@
 \alias{print.causal_recur_fit}
 \alias{summary.causal_recur_fit}
 \alias{plot.causal_recur_fit}
-\alias{data_pre}
-\title{Fit Bayesian Causal Recurrent and Terminal‑Event Model}
+\title{Fit Bayesian Causal Recurrent and Terminal-Event Model}
 \usage{
 fit_causal_recur(
   data,
@@ -39,10 +38,10 @@ fit_causal_recur(
 \method{plot}{causal_recur_fit}(x, ...)
 }
 \arguments{
-\item{data}{A \strong{long‑format} \code{data.frame} that contains the user‑named
+\item{data}{A \strong{long-format} \code{data.frame} that contains the user-named
 identifier, time index, treatment, outcome, and any covariate columns.
 These names are supplied via \code{id_col}, \code{time_col}, \code{treat_col}, plus the
-left‑hand sides of \code{formula_T} and \code{formula_Y}.}
+left-hand sides of \code{formula_T} and \code{formula_Y}.}
 
 \item{K}{Integer. Total number of discrete intervals in the study.}
 
@@ -54,10 +53,10 @@ index} (\verb{1,...,K}).}
 \item{treat_col}{Character scalar. Column name holding the \strong{treatment
 indicator} (\code{0/1}).}
 
-\item{formula_T}{A formula for the terminal‑event (death) sub‑model, e.g.
+\item{formula_T}{A formula for the terminal-event (death) sub-model, e.g.
 \code{death_flag ~ Y_prev + A + k_idx}.}
 
-\item{formula_Y}{A formula for the recurrent‑count sub‑model, e.g.
+\item{formula_Y}{A formula for the recurrent-count sub-model, e.g.
 \code{event_count ~ Y_prev + A + k_idx}.}
 
 \item{prior}{Named list of gAR(1) hyperparameters with elements
@@ -66,21 +65,32 @@ indicator} (\code{0/1}).}
 
 \item{num_chains}{Integer. Number of MCMC chains (default \code{4}).}
 
-\item{iter}{Integer. Total iterations \emph{per} chain including warm‑up
+\item{iter}{Integer. Total iterations \emph{per} chain including warm-up
 (default \code{2000}).}
 
-\item{stan_model_file}{Optional path to a pre‑compiled Stan model.
-If \code{NULL}, the package‑internal teacher‑style model is used.}
+\item{stan_model_file}{Optional path to a pre-compiled Stan model.
+If \code{NULL}, the package-internal teacher-style model is used.}
 
 \item{control}{List passed to Stan sampling (see \strong{rstan} docs).}
 
+\item{cores}{Integer. Number of CPU cores to use for parallel sampling
+(default \code{1}).}
+
 \item{verbose}{Logical. Print progress messages (default \code{TRUE}).}
+
+\item{lag_col}{Character scalar. Name of the column to hold the lagged}
 
 \item{x}{an object used to select a method.}
 
 \item{...}{further arguments passed to or from other methods.}
 
-\item{x_cols}{Character vector of additional (static or time‑varying)
+\item{object}{An object of class \code{causal_recur_fit} (list) returned by
+\code{fit_causal_recur()}.}
+
+\item{pars_to_report}{Character vector of parameter names to report in
+\code{summary()}.}
+
+\item{x_cols}{Character vector of additional (static or time-varying)
 covariate names to keep; \code{NULL} if none.}
 }
 \value{
@@ -89,18 +99,18 @@ An object of class \code{causal_recur_fit} (list) with elements
 \code{stan_data_list}.
 }
 \description{
-Fits a discrete‑time Bayesian model for recurrent event counts and a terminal
-event (death) using gAR(1) smoothing priors on the time‑varying intercepts.
+Fits a discrete-time Bayesian model for recurrent event counts and a terminal
+event (death) using gAR(1) smoothing priors on the time-varying intercepts.
 }
 \details{
 Internally the function
 \enumerate{
 \item Copies \code{id_col}, \code{time_col}, and \code{treat_col} into the canonical names
-\code{pat_id}, \code{k_idx}, and \code{A}, and copies the outcomes named on the left‑hand
+\code{pat_id}, \code{k_idx}, and \code{A}, and copies the outcomes named on the left-hand
 sides of \code{formula_T} / \code{formula_Y} into \code{T_obs} / \code{Y_obs};
 \item Calls \code{\link[=preprocess_data]{preprocess_data()}} to fill missing intervals, create lagged
 variables, and run basic checks;
-\item Builds teacher‑style standata, compiles the Stan model, and runs MCMC
+\item Builds teacher-style standata, compiles the Stan model, and runs MCMC
 sampling via \strong{rstan}.
 }
 }
