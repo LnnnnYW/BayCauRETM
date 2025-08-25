@@ -67,18 +67,69 @@ mcmc_diagnosis <- function(fit_out,
     row.names = NULL,
     stringsAsFactors = FALSE
   )
+
+  df_stats$Parameter <- .map_param_names(fit_out, df_stats$Parameter)
+
   print(df_stats)
   cat("(Values close to Rhat = 1 and large n_eff indicate good convergence.)\n\n")
 
   # trace-plots
+  .title_pretty <- function(tag) {
+    switch(tag,
+           "beta0"    = "T-model: covariates + lags + time-baseline",
+           "theta0"   = "Y-model: covariates + lags + time-baseline",
+           "beta1"    = "T-model: treatment_effect_T",
+           "theta1"   = "Y-model: treatment_effect_Y",
+           "thetaLag" = "Lag-kernel (theta_lag_extra)",
+           tag
+    )
+  }
+
+  bayesplot::color_scheme_set("blue")
+
+  arr_all  <- as.array(stan_fit)
+  all_vars <- dimnames(arr_all)[[3]]
+
   plots <- lapply(use_pars, function(par) {
-    p <- bayesplot::mcmc_trace(as.array(stan_fit), regex_pars = par) +
-      ggplot2::ggtitle(paste0("Traceplot: ", par))
-    if (save_plots)
-      ggplot2::ggsave(filename = paste0(plot_prefix, par, ".png"), plot = p)
+    idx <- grep(paste0("^", par, "(\\[|$|_star$)"), all_vars)
+    if (length(idx) == 0L) return(NULL)
+
+    vars_pretty <- .map_param_names(fit_out, all_vars[idx])
+    arr_sub     <- arr_all[, , idx, drop = FALSE]
+    dimnames(arr_sub)[[3]] <- vars_pretty
+
+    n_pan <- length(vars_pretty)
+    ncol  <- 2L
+    nrow  <- ceiling(n_pan / ncol)
+
+    fig_w <- 11
+    fig_h <- max(6.5, 3.0 + 2.4 * nrow)
+
+    p <- bayesplot::mcmc_trace(
+      arr_sub,
+      pars = vars_pretty,
+      facet_args = list(scales = "free_y", ncol = ncol)
+    ) +
+      ggplot2::labs(title = paste0("Traceplot: ", .title_pretty(par))) +
+      ggplot2::theme(
+        plot.title    = ggplot2::element_text(hjust = 0.5, size = 16, face = "bold"),
+        strip.text    = ggplot2::element_text(size = 12, face = "bold"),
+        axis.title    = ggplot2::element_text(size = 12),
+        axis.text     = ggplot2::element_text(size = 10),
+        panel.spacing = grid::unit(1.4, "lines"),
+        plot.margin   = grid::unit(rep(0.6, 4), "lines")
+      )
+
+    if (save_plots) {
+      ggplot2::ggsave(paste0(plot_prefix, par, ".png"),
+                      plot = p, width = fig_w, height = fig_h, dpi = 150)
+    }
+    attr(p, "BayCauRETM_fig_width")  <- fig_w
+    attr(p, "BayCauRETM_fig_height") <- fig_h
     p
   })
-  names(plots) <- use_pars
+  plots <- Filter(Negate(is.null), plots)
+  names(plots) <- use_pars[seq_along(plots)]
 
   # positivity diagnostics
   if (positivity) {

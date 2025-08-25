@@ -12,7 +12,7 @@
 #'   left-hand sides of `formula_T` and `formula_Y`.
 #' @param K Integer. Total number of discrete intervals in the study.
 #' @param id_col Character scalar. Column name holding the **subject ID**.
-#' @param time_col Character scalar. Column name holding the **discrete time
+#' @param time_col Factor scalar. Column name holding the **discrete time
 #'   index** (`1,...,K`).
 #' @param treat_col Character scalar. Column name holding the **treatment
 #'   indicator** (`0/1`).
@@ -190,6 +190,24 @@ fit_causal_recur <- function(
   QlagT <- ncol(Lag_Tk)
   QlagY <- ncol(Lag_Yk)
 
+  lag_pat <- paste0("\\b", lag_col, "\\b")
+
+  is_lag_T <- grepl(lag_pat, colnames(Lag_Tk) %||% character(0))
+  is_lag_Y <- grepl(lag_pat, colnames(Lag_Yk) %||% character(0))
+
+  names_T_cov <- (colnames(Lag_Tk) %||% character(0))[!is_lag_T]
+  names_T_lag <- (colnames(Lag_Tk) %||% character(0))[ is_lag_T]
+
+  names_Y_cov <- (colnames(Lag_Yk) %||% character(0))[!is_lag_Y]
+  names_Y_lag <- (colnames(Lag_Yk) %||% character(0))[ is_lag_Y]
+
+  param_labels <- list(
+    T_cov = names_T_cov,
+    T_lag = names_T_lag,
+    Y_cov = names_Y_cov,
+    Y_lag = names_Y_lag
+  )
+
   prior_def <- list(
     eta_beta = 0,  sigma_beta = 1,  rho_beta = 0,
     eta_gamma = 0, sigma_gamma = 1, rho_gamma = 0,
@@ -259,6 +277,7 @@ fit_causal_recur <- function(
       data_preprocessed = df,
       n_pat             = n_pat,
       K                 = K,
+      param_labels      = param_labels,
       design_info       = list(
         formula_T   = formula_T,
         formula_Y   = formula_Y,

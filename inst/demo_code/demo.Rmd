@@ -2,11 +2,14 @@
 title: "Bayesian Causal Inference for Recurrent Events with Timing Misalignment"
 author: "Yuqin"
 date: "2025-08-15"
-output: pdf_document
+output:
+  pdf_document:
+    latex_engine: lualatex
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = TRUE)
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = TRUE, fig.width = 11, fig.height = 8.5, dpi = 150, fig.align = "center")
+
 library(BayCauRETM)
 library(dplyr)
 library(tidyr)
@@ -14,13 +17,14 @@ library(rstan)
 library(parallel)
 library(rstudioapi)
 set.seed(42)
-setwd(dirname(getActiveDocumentContext()$path))
 ```
 
 This Markdown of the Bayesian framework was proposed by Oganisian et al. (2024) for causal inference with recurrent events subject to timing misalignment. We use a semiparametric Bayesian model to estimate the average causal effect of a time-varying treatment on the recurrent event rate, accounting for terminal events and censoring.
 
 ## 1. Setup
-We configure Stan and set parallelization options for efficient MCMC sampling.
+
+We configure Stan and set parallelization options for efficient MCMC workflow. We fix the random seed, enable parallel sampling, and set Hamiltonian Monte Carlo controls. The defaults (warmup = 500, M (posterior draws) = 500, 4 chains) are modest for illustration.
+
 ```{r}
 use_multicore <- TRUE   # FALSE for single core
 if (use_multicore) {
@@ -39,7 +43,19 @@ s_vec  <- c(3, 6, 9)
 ```
 
 ## 2. Data Preprocessing
+
 This step prepares the longitudinal dataset for analysis, including normalization and handling of missing values.
+
+The package expects a long panel with: unique subject id (id), discrete time index (k), treatment (Ak), recurrent count (Yk), terminal event indicator (Tk), and optional covariates (here L.1, L.2).
+
+History lagYk (default 0 at each subject’s first interval) captures short-term dependence. In our design, lagged history terms are fully flexible: users may supply their own lag variables (e.g., lagYk, higher-order lags, or custom functions of past outcomes) directly in the dataset and reference them in the formulas, or omit them entirely. If no lag variable is provided but lag terms are specified in the formulas, the function automatically constructs the appropriate lag internally. This guarantees valid defaults while allowing investigators to encode any history structure they need.
+
+Continuous covariates are standardized to improve sampler geometry and prior interpretability.
+
+Remove observations with missing values for variables used in the model formulas; if imputation is required, perform it upstream and re-use the same transform for prediction.
+
+K equals the number of unique time intervals and controls the length of each model’s piecewise baseline.
+
 ```{r}
 load("data.Rdata")
 df_fit <- df %>%
@@ -60,7 +76,21 @@ K <- length(unique(df_fit$k_fac))
 ```
 
 ## 3. Bayesian Model Fitting
+
 We now fit the joint model for the recurrent events and terminal process using Stan.
+
+We fit a joint Bayesian model for (i) the terminal process Tk and (ii) the recurrent evernts Yk, sharing the discrete time structure and history recoords. Each sub-model includes: the current treatment, lagged outcomes (e.g. I(lagYk\^2)), standardized covariates (L.1, L.2), and a piecewise-constant baseline (time_baseline_T[j] / time_baseline_Y[j]).
+
+We expose variable names in diagnostics and summaries as follows:
+
+-   beta_T:L.1, beta_T:L.2, beta_Y:L.1, beta_Y:L.2: covariate (L.1, L.2 here) effects in T/Y models.
+
+-   theta_T_lag:I(lagYk\^2), theta_Y_lag:I(lagYk\^2): coefficients for lagged outcome features.
+
+-   time_baseline_T[j], time_baseline_Y[j]: j-th time-interval baselines capturing secular time trends.
+
+-   treatment_effect_T, treatment_effect_Y: treatment effects for terminal and recurrent processes.
+
 ```{r}
 # Stan fit
 fit <- fit_causal_recur(
@@ -78,17 +108,40 @@ fit <- fit_causal_recur(
 ```
 
 ## 4. MCMC Diagnostics
-Evaluate convergence and identify any problematic chains.
+
+Evaluate convergence and identify any problematic chains. We report R-hat (target ≈ 1.00), effective sample size (should be large), and show traceplots grouped by model block.
+
 ```{r}
 # MCMC Diagnosis
-message("Checking convergence...")
 rstan::check_hmc_diagnostics(fit$stan_fit)
 diag <- mcmc_diagnosis(fit)
 plot(diag)
 ```
 
 ## 5. G-Computation
+
 We simulate potential outcomes under hypothetical treatment strategies to estimate causal contrasts.
+
+We target a marginal causal estimand that contrasts the expected cumulative outcome trajectory under different treatment initiation strategies. Formally, let $$
+\Delta(s, K+1) \;=\; 
+\mathbb{E}\!\left\{ Y_{1:K+1}(s) \right\} \;-\; 
+\mathbb{E}\!\left\{ Y_{1:K+1}(\text{ref}) \right\},
+$$ where $s \in s_{\text{vec}}$ denotes a treatment-start interval strategy and “ref” denotes the reference strategy (e.g., no intervention). Here $Y_{1:K+1}(s)$ is the cumulative number of events through interval $K+1$ under strategy $s$.
+
+Estimation proceeds via Bayesian g-computation. For each posterior draw of model parameters, we simulate forward the joint process of survival and recurrent events under the intervention sequence $A_{1:K}(s)$, average across subjects, and repeat for the reference strategy. The causal contrast $\Delta(s,K+1)$ is then obtained as the posterior distribution of their difference: $$
+\Delta(s,K+1)^{(m)} \;=\; 
+\frac{1}{n}\sum_{i=1}^n 
+\Bigg\{
+\frac{\sum_{k=1}^K Y^{(m)}_{ik}(s)}
+     {K - \sum_{k=1}^K T^{(m)}_{ik}(s)}
+-
+\frac{\sum_{k=1}^K Y^{(m)}_{ik}(\text{ref})}
+     {K - \sum_{k=1}^K T^{(m)}_{ik}(\text{ref})}
+\Bigg\},
+$$ where $Y^{(m)}_{ik}(s)$ and $T^{(m)}_{ik}(s)$ denote simulated event and death indicators for subject $i$ at interval $k$ under posterior draw $m$. The full posterior of $\Delta(s,K+1)$ is summarized by its mean and credible interval. Wide intervals centered near zero indicate weak evidence for a treatment effect, in which case one may consider larger samples, stronger priors, or alternative summaries such as median effects or exceedance probabilities.
+
+This simulation-based g-computation ensures that both survival and recurrent event processes are attributed consistently to each strategy, thereby yielding a valid causal interpretation of treatment-timing contrasts.
+
 ```{r}
 baseline_df <- fit$data_preprocessed %>%
   group_by(pat_id) %>%
@@ -96,7 +149,6 @@ baseline_df <- fit$data_preprocessed %>%
   arrange(pat_id) %>%
   ungroup()
 
-message("Running g-computation...")
 gcomp <- g_computation(
   fit_out = fit,
   s_vec   = s_vec,
@@ -109,27 +161,23 @@ plot(gcomp, ref_line = 0)
 plot(gcomp, interactive = TRUE, ref_line = 0)
 ```
 
-## 6. Propensity Score Diagnostics
-Assess overlap and positivity for model validity.
-```{r}
-ps_diag <- propensity_score_diagnostics(
-  fit$data_preprocessed,
-  treat_col = "A",
-  covariates = c("lagYk","k_idx")
-)
-plot(ps_diag, type = "histogram")
-plot(ps_diag, type = "density")
-```
+## 6. Switching Probability Summary
 
-## 7. Switching Probability Summary
-Visualize the probability of treatment switching across time intervals.
+The switching probability summary quantifies how often subjects switch treatment across follow-up intervals. For each interval k, we estimate the within-subject probability of switching.
+
+Boxplots show the empirical distribution of switching probabilities across subjects at each interval. Wide boxes indicate heterogeneity in switching behavior. Dots represent individual subjects whose switching probabilities are extreme relative to the median. Solid line connects the interval-specific means, summarizing the average probability of switching across the cohort. Horizontal bars at each point show approximate credible intervals (uncertainty bands) around the mean estimate.
+
+Large dispersion or systematic drifts in switching probabilities across intervals kkk reveal time-structured treatment policies (e.g., delayed initiation or systematic stopping). This contextualizes causal estimates and aids interpretation of the contrast $\Delta(s, K{+}1)$.
+
 ```{r}
 sw_diag <- switching_probability_summary(fit$data_preprocessed)
 plot(sw_diag, type = "boxplot")
 ```
 
-## 8. Summary of Causal Estimates
-This table summarizes posterior distributions of model parameters and g-computation estimates.
+## 7. Summary of Causal Estimates
+
+This table summarizes posterior distributions of model parameters and g-computation estimates. Parameter tables report Mean, 2.5%, 97.5%, R-hat, n_eff, MCSE, and CI width. Effects close to 0 with tight intervals imply little evidence of impact. Baseline blocks (time_baseline\_\*) quantify secular time risk; do not interpret them as treatment effects.
+
 ```{r}
 sum_tbl <- result_summary_table(
   fit_out   = fit,

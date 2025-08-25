@@ -87,11 +87,8 @@ ps_diag <- propensity_score_diagnostics(
 plot(ps_diag, type = "histogram")
 plot(ps_diag, type = "density")
 
-# 6) Switching Probability
-sw_diag <- switching_probability_summary(fit$data_preprocessed)
-plot(sw_diag, type = "boxplot")
 
-# 7) Results
+# 6) Results
 sum_tbl <- result_summary_table(
   fit_out   = fit,
   gcomp_out = gcomp,

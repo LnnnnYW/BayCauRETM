@@ -81,6 +81,7 @@ result_summary_table <- function(fit_out,
         CI_width  = ss[, "97.5%"] - ss[, "2.5%"],
         row.names = NULL, stringsAsFactors = FALSE
       )
+      df_par$Parameter <- .map_param_names(fit_out, df_par$Parameter)
     }
   }
 
@@ -172,12 +173,11 @@ result_summary_table <- function(fit_out,
   out <- list(
     param_summary = df_par,
     delta_summary = df_delta,
-    param_table   = if (is.null(param_table)) df_par else param_table,
-    delta_table   = if (is.null(delta_table)) df_delta else delta_table,
     export_file   = export_path
   )
   class(out) <- c("result_summary_table", "baycar_results")
   invisible(out)
+
 }
 
 
@@ -189,20 +189,20 @@ result_summary_table <- function(fit_out,
 #' @export
 
 print.result_summary_table <- function(x, ...) {
-  if (inherits(x$param_table, "knitr_kable") ||
-      inherits(x$param_table, "gt_tbl")) {
-    print(x$param_table)
+  use_kable <- requireNamespace("knitr", quietly = TRUE)
+
+  cat("----- Posterior Parameters -----\n")
+  if (use_kable) {
+    print(knitr::kable(x$param_summary, format = "pipe", digits = 6))
   } else {
-    cat("----- Posterior Parameters -----\n")
-    print(x$param_summary)
+    print(x$param_summary, row.names = FALSE)
   }
-  cat("\n")
-  if (inherits(x$delta_table, "knitr_kable") ||
-      inherits(x$delta_table, "gt_tbl")) {
-    print(x$delta_table)
+
+  cat("\n----- g-computation delta(s, K+1) -----\n")
+  if (use_kable) {
+    print(knitr::kable(x$delta_summary, format = "pipe", digits = 6))
   } else {
-    cat("----- g-computation delta(s, K+1) -----\n")
-    print(x$delta_summary)
+    print(x$delta_summary, row.names = FALSE)
   }
   invisible(x)
 }
@@ -218,3 +218,11 @@ summary.result_summary_table <- function(object, ...) {
   print(object)
   invisible(object)
 }
+
+
+
+
+
+
+
+

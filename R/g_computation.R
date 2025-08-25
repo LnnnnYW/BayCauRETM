@@ -48,6 +48,8 @@ g_computation <- function(Lmat = NULL,
                           B     = 50,
                           cores = 1) {
 
+  depth <- function(x) if (is.null(x)) 0L else tryCatch(purrr::depth(x), error = function(e) 0L)
+
   if (!inherits(fit_out$stan_fit, "stanfit"))
     stop("fit_out$stan_fit must be a 'stanfit' object")
 

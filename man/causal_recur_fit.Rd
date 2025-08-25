@@ -46,7 +46,7 @@ left-hand sides of \code{formula_T} and \code{formula_Y}.}
 
 \item{id_col}{Character scalar. Column name holding the \strong{subject ID}.}
 
-\item{time_col}{Character scalar. Column name holding the \strong{discrete time
+\item{time_col}{Factor scalar. Column name holding the \strong{discrete time
 index} (\verb{1,...,K}).}
 
 \item{treat_col}{Character scalar. Column name holding the \strong{treatment
