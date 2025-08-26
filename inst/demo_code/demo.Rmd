@@ -59,7 +59,7 @@ K equals the number of unique time intervals and controls the length of each mod
 ```{r}
 load("data.Rdata")
 df_fit <- df %>%
-  filter(id %in% 1:100) %>%
+  # filter(id %in% 1:100) %>%           #for subset
   arrange(id, k) %>%
   mutate(k_fac = as.integer(factor(k, levels = sort(unique(k))))) %>%
   group_by(id) %>%
@@ -165,13 +165,23 @@ plot(gcomp, interactive = TRUE, ref_line = 0)
 
 The switching probability summary quantifies how often subjects switch treatment across follow-up intervals. For each interval k, we estimate the within-subject probability of switching.
 
-Boxplots show the empirical distribution of switching probabilities across subjects at each interval. Wide boxes indicate heterogeneity in switching behavior. Dots represent individual subjects whose switching probabilities are extreme relative to the median. Solid line connects the interval-specific means, summarizing the average probability of switching across the cohort. Horizontal bars at each point show approximate credible intervals (uncertainty bands) around the mean estimate.
+The switching probability summary quantifies how often subjects change treatment across follow-up intervals.\
+There are two possible scales:
 
-Large dispersion or systematic drifts in switching probabilities across intervals kkk reveal time-structured treatment policies (e.g., delayed initiation or systematic stopping). This contextualizes causal estimates and aids interpretation of the contrast $\Delta(s, K{+}1)$.
+-   Mass (default): the marginal probability that switching occurs at interval k, which shows how many subjects in the population switched at each time point.
+-   Hazard: the conditional probability of switching at interval k given that the subject has not yet switched before k.
+
+By default, the function uses scale="mass":
 
 ```{r}
-sw_diag <- switching_probability_summary(fit$data_preprocessed)
-plot(sw_diag, type = "boxplot")
+# default (scale="mass")
+sw  <- switching_probability_summary(fit$data_preprocessed)                  
+plot(sw)
+```
+
+```{r}
+sw  <- switching_probability_summary(fit$data_preprocessed, scale="hazard")
+plot(sw)
 ```
 
 ## 7. Summary of Causal Estimates

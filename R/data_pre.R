@@ -6,6 +6,18 @@ utils::globalVariables(c(
   "p25", "p75"
 ))
 
+`%||%` <- function(x, y) if (is.null(x)) y else x
+
+.vars_in_formula <- function(f) {
+  if (is.null(f)) return(character(0))
+  unique(all.vars(stats::delete.response(stats::terms(f))))
+}
+
+.formula_uses_var <- function(f, varname) {
+  varname %in% .vars_in_formula(f)
+}
+
+
 #' Preprocess Long-Format Data (ordering, ID remapping, optional lag creation)
 #'
 #' Prepares a long-format dataset that already follows the standard column
@@ -68,46 +80,60 @@ utils::globalVariables(c(
 #' @noRd
 
 
-preprocess_data <- function(df, K, lag_col = NULL) {
+preprocess_data <- function(df, K, lag_col = NULL, need_lag = FALSE) {
   stopifnot(is.data.frame(df))
   stopifnot(is.numeric(K), length(K) == 1, K >= 1)
-  if (!is.null(lag_col)) stopifnot(is.character(lag_col), length(lag_col) == 1)
 
   req <- c("pat_id", "k_idx", "Y_obs", "T_obs", "A")
   if (any(miss <- !req %in% names(df)))
-    stop("df is missing required columns: ",
-         paste(req[miss], collapse = ", "))
+    stop("df is missing required columns: ", paste(req[miss], collapse = ", "))
 
   df <- df[order(df$pat_id, df$k_idx), ]
   pat_ids <- unique(df$pat_id)
   pat_map <- setNames(seq_along(pat_ids), pat_ids)
   df$pat_id <- pat_map[as.character(df$pat_id)]
 
-
-  if (!is.null(lag_col) && !(lag_col %in% names(df))) {
-    warning("Specified lag_col '", lag_col, "' not found. Auto-generating based on lagged Y_obs > 0.")
-
+  if (need_lag && !is.null(lag_col) && !(lag_col %in% names(df))) {
+    message("Lag column '", lag_col, "' not found; auto-generating from I(Y_{k-1} > 0).")
     n <- nrow(df)
     lag_values <- numeric(n)
 
     pat_starts <- match(unique(df$pat_id), df$pat_id)
-    pat_ends <- c(pat_starts[-1] - 1, n)
+    pat_ends   <- c(pat_starts[-1] - 1, n)
 
     for (i in seq_along(pat_starts)) {
-      start_idx <- pat_starts[i]
-      end_idx <- pat_ends[i]
-      if (end_idx > start_idx) {
-        lag_values[(start_idx + 1):end_idx] <-
-          as.integer(df$Y_obs[start_idx:(end_idx - 1)] > 0)
-      }
+      s <- pat_starts[i]; e <- pat_ends[i]
+      if (e > s) lag_values[(s + 1):e] <- as.integer(df$Y_obs[s:(e - 1)] > 0)
+      lag_values[s] <- 0  # 每个受试者首期=0
     }
     df[[lag_col]] <- lag_values
   }
 
+  if (!is.null(lag_col) && lag_col %in% names(df)) {
+    idx_first <- !duplicated(df$pat_id)
+    df[[lag_col]][idx_first & is.na(df[[lag_col]])] <- 0
+  }
+
+  trim_after_death <- function(kk, tt) {
+    pos <- which(tt == 1)
+    if (length(pos)) {
+      last <- min(pos)
+      keep <- seq_len(length(kk)) <= last
+    } else keep <- rep(TRUE, length(kk))
+    keep
+  }
+  keep_lst <- mapply(
+    trim_after_death,
+    split(df$k_idx, df$pat_id),
+    split(df$T_obs, df$pat_id),
+    SIMPLIFY = FALSE
+  )
+  df <- df[unsplit(keep_lst, df$pat_id), , drop = FALSE]
 
   structure(
     list(processed_df = df,
-         n_pat        = length(pat_ids)),
+         n_pat        = length(unique(df$pat_id))),
     class = c("preprocess_data", "list")
   )
 }
+

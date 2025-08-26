@@ -116,12 +116,11 @@ fit_causal_recur <- function(
     control = list(adapt_delta = 0.95, max_treedepth = 15),
     cores = 1,
     verbose = TRUE,
-    lag_col = NULL
+    lag_col = "lagYk"
 ) {
   stan_model_file <- system.file("stan", "causal_recur_model.rds", package = "BayCauRETM")
-  if (!nzchar(stan_model_file) || !file.exists(stan_model_file)) {
+  if (!nzchar(stan_model_file) || !file.exists(stan_model_file))
     stop("Stan model file not found at: ", stan_model_file)
-  }
 
   if (is.null(prior)) {
     prior <- list(
@@ -149,12 +148,12 @@ fit_causal_recur <- function(
   df$k_idx  <- df[[time_col]]
   df$A      <- df[[treat_col]]
 
-  if (is.null(lag_col)) {
-    lag_col <- "lagYk"
-    df[[lag_col]] <- 0
-  }
+  terms_no_resp <- function(f) stats::delete.response(stats::terms(f))
+  vars_in_rhs   <- function(f) unique(all.vars(terms_no_resp(f)))
+  uses_lag      <- !is.null(lag_col) && lag_col %in% c(vars_in_rhs(formula_T), vars_in_rhs(formula_Y))
+  need_lag      <- uses_lag && !(lag_col %in% names(df))
 
-  prep  <- preprocess_data(df, K = K, lag_col = lag_col)
+  prep  <- preprocess_data(df, K = K, lag_col = if (uses_lag) lag_col else NULL, need_lag = need_lag)
   df    <- prep$processed_df
   n_pat <- prep$n_pat
 
@@ -166,46 +165,64 @@ fit_causal_recur <- function(
   NY1 <- nrow(df_Y1)
   NYk <- nrow(df_Yk)
 
-  P      <- 0
-  X_all  <- matrix(0, NTk, 0)
-  X_base <- matrix(0, NY1, 0)
-  L_Yk   <- matrix(0, NYk, 0)
-
   `%||%` <- function(x, y) if (is.null(x)) y else x
-  get_rhs <- function(f) attr(terms(f), "term.labels") %||% character(0)
-  tv_terms_T <- setdiff(get_rhs(formula_T), treat_col)
-  tv_terms_Y <- setdiff(get_rhs(formula_Y), treat_col)
 
-  build_mm <- function(rhs, d) {
-    if (length(rhs) == 0) return(matrix(0, nrow(d), 0))
-    mm <- model.matrix(reformulate(rhs, intercept = FALSE), d, na.action = na.pass)
+  get_labels <- function(f) attr(stats::terms(f), "term.labels") %||% character(0)
+  rhs_T <- setdiff(get_labels(formula_T), treat_col)
+  rhs_Y <- setdiff(get_labels(formula_Y), treat_col)
+
+  pat <- if (!is.null(lag_col)) paste0("\\b", lag_col, "\\b") else "^$"
+  T_lag_terms <- rhs_T[grepl(pat, rhs_T)]
+  Y_lag_terms <- rhs_Y[grepl(pat, rhs_Y)]
+  T_cov_terms <- setdiff(rhs_T, T_lag_terms)
+  Y_cov_terms <- setdiff(rhs_Y, Y_lag_terms)
+
+  build_mm <- function(terms, d, env) {
+    if (!length(terms)) return(matrix(0, nrow(d), 0))
+    f <- stats::reformulate(terms, intercept = FALSE)
+    environment(f) <- env
+    mm <- stats::model.matrix(f, d, na.action = stats::na.pass)
     mm[is.na(mm)] <- 0
     storage.mode(mm) <- "double"
     mm
   }
+  env_T <- attr(stats::terms(formula_T), ".Environment")
+  env_Y <- attr(stats::terms(formula_Y), ".Environment")
 
-  Lag_Tk <- build_mm(tv_terms_T, df)
-  Lag_Yk <- build_mm(tv_terms_Y, df_Yk)
 
-  QlagT <- ncol(Lag_Tk)
-  QlagY <- ncol(Lag_Yk)
+  MM_T_cov_all  <- build_mm(T_cov_terms, df,    env_T)
+  MM_Y_cov_y1   <- build_mm(Y_cov_terms, df_Y1, env_Y)
+  MM_Y_cov_yk   <- build_mm(Y_cov_terms, df_Yk, env_Y)
 
-  lag_pat <- paste0("\\b", lag_col, "\\b")
+  cov_cols <- union(colnames(MM_T_cov_all) %||% character(0),
+                    union(colnames(MM_Y_cov_y1) %||% character(0),
+                          colnames(MM_Y_cov_yk) %||% character(0)))
 
-  is_lag_T <- grepl(lag_pat, colnames(Lag_Tk) %||% character(0))
-  is_lag_Y <- grepl(lag_pat, colnames(Lag_Yk) %||% character(0))
+  align_mm <- function(mm, cols) {
+    if (!length(cols)) return(matrix(0, nrow(mm), 0))
+    if (is.null(colnames(mm))) {
+      out <- matrix(0, nrow(mm), length(cols)); colnames(out) <- cols; return(out)
+    }
+    miss <- setdiff(cols, colnames(mm))
+    mm2  <- if (length(miss)) cbind(mm, matrix(0, nrow(mm), length(miss), dimnames = list(NULL, miss))) else mm
+    mm2[, cols, drop = FALSE]
+  }
 
-  names_T_cov <- (colnames(Lag_Tk) %||% character(0))[!is_lag_T]
-  names_T_lag <- (colnames(Lag_Tk) %||% character(0))[ is_lag_T]
+  L_Tk  <- align_mm(MM_T_cov_all, cov_cols)
+  L_Y1  <- if (NY1) align_mm(MM_Y_cov_y1, cov_cols) else matrix(0, 0, length(cov_cols), dimnames = list(NULL, cov_cols))
+  L_Yk  <- if (NYk) align_mm(MM_Y_cov_yk, cov_cols) else matrix(0, 0, length(cov_cols), dimnames = list(NULL, cov_cols))
+  P     <- length(cov_cols)
 
-  names_Y_cov <- (colnames(Lag_Yk) %||% character(0))[!is_lag_Y]
-  names_Y_lag <- (colnames(Lag_Yk) %||% character(0))[ is_lag_Y]
+  Lag_Tk <- build_mm(T_lag_terms, df,    env_T)
+  Lag_Yk <- build_mm(Y_lag_terms, df_Yk, env_Y)
+  QlagT  <- ncol(Lag_Tk)
+  QlagY  <- ncol(Lag_Yk)
 
   param_labels <- list(
-    T_cov = names_T_cov,
-    T_lag = names_T_lag,
-    Y_cov = names_Y_cov,
-    Y_lag = names_Y_lag
+    cov_terms = union(T_cov_terms, Y_cov_terms),
+    cov_cols  = cov_cols,
+    T_lag     = colnames(Lag_Tk) %||% character(0),
+    Y_lag     = colnames(Lag_Yk) %||% character(0)
   )
 
   prior_def <- list(
@@ -217,29 +234,25 @@ fit_causal_recur <- function(
   )
   prior_use <- modifyList(prior_def, prior)
 
+  # Stan 数据
   stan_data <- list(
     NY1 = NY1, NYk = NYk, NTk = NTk,
     K = K, P = P,
-
     kvecT = df$k_idx,
-    L_Tk  = X_all,
+    L_Tk  = L_Tk,
     A_Tk  = df$A,
     Tk    = df$T_obs,
-
-    kvecY = df_Yk$k_idx,
+    kvecY = if (NYk) df_Yk$k_idx else integer(0),
     L_Yk  = L_Yk,
-    A_Yk  = df_Yk$A,
-    Yk    = df_Yk$Y_obs,
-
-    L_Y1 = X_base,
-    A_Y1 = if (NY1) df_Y1$A else integer(0),
-    Y1   = if (NY1) df_Y1$Y_obs else integer(0),
-
+    A_Yk  = if (NYk) df_Yk$A else numeric(0),
+    Yk    = if (NYk) df_Yk$Y_obs else integer(0),
+    L_Y1  = L_Y1,
+    A_Y1  = if (NY1) df_Y1$A else numeric(0),
+    Y1    = if (NY1) df_Y1$Y_obs else integer(0),
     QlagT  = QlagT,
     Lag_Tk = if (QlagT) Lag_Tk else matrix(0, NTk, 0),
     QlagY  = QlagY,
     Lag_Yk = if (QlagY) Lag_Yk else matrix(0, NYk, 0),
-
     eta_beta = prior_use$eta_beta,
     sigma_beta = prior_use$sigma_beta,
     rho_beta = prior_use$rho_beta,
@@ -253,16 +266,10 @@ fit_causal_recur <- function(
 
   if (verbose) message("Loading pre-compiled Stan model from: ", stan_model_file)
   stan_mod <- readRDS(stan_model_file)
-  if (!inherits(stan_mod, "stanmodel")) {
-    stop("The RDS at ", stan_model_file, " is not a 'stanmodel' object. Got class: ",
-         paste(class(stan_mod), collapse = ", "))
-  }
+  if (!inherits(stan_mod, "stanmodel"))
+    stop("The RDS at ", stan_model_file, " is not a 'stanmodel' object.")
 
-  if (verbose) {
-    message(sprintf("Sampling (%d chains * %d iter, cores=%d)...",
-                    num_chains, iter, cores))
-  }
-
+  if (verbose) message(sprintf("Sampling (%d chains * %d iter, cores=%d)...", num_chains, iter, cores))
   stan_fit <- rstan::sampling(
     object = stan_mod,
     data   = stan_data,
@@ -279,10 +286,9 @@ fit_causal_recur <- function(
       K                 = K,
       param_labels      = param_labels,
       design_info       = list(
-        formula_T   = formula_T,
-        formula_Y   = formula_Y,
-        covariate_names = character(0),
-        treat_col   = treat_col
+        id_col = id_col, time_col = time_col, treat_col = treat_col,
+        formula_T = formula_T, formula_Y = formula_Y,
+        lag_col = if (uses_lag) lag_col else NULL
       ),
       prior             = prior_use,
       stan_data_list    = stan_data

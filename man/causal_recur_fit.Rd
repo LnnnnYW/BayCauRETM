@@ -23,7 +23,7 @@ fit_causal_recur(
   control = list(adapt_delta = 0.95, max_treedepth = 15),
   cores = 1,
   verbose = TRUE,
-  lag_col = NULL
+  lag_col = "lagYk"
 )
 
 \method{print}{causal_recur_fit}(x, ...)

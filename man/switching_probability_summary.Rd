@@ -13,13 +13,7 @@ switching_probability_summary(df, covariates = NULL)
 
 \method{summary}{switching_summary}(object, ...)
 
-\method{plot}{switching_summary}(
-  x,
-  type = c("ribbon", "boxplot"),
-  show_mean = TRUE,
-  theme_fn = ggplot2::theme_minimal,
-  ...
-)
+\method{plot}{switching_summary}(x, type = c("boxplot", "line"), ...)
 }
 \arguments{
 \item{df}{A \code{data.frame} from \code{preprocess_data()} (or similarly structured),
