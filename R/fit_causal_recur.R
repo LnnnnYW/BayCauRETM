@@ -234,7 +234,6 @@ fit_causal_recur <- function(
   )
   prior_use <- modifyList(prior_def, prior)
 
-  # Stan 数据
   stan_data <- list(
     NY1 = NY1, NYk = NYk, NTk = NTk,
     K = K, P = P,

@@ -104,7 +104,7 @@ preprocess_data <- function(df, K, lag_col = NULL, need_lag = FALSE) {
     for (i in seq_along(pat_starts)) {
       s <- pat_starts[i]; e <- pat_ends[i]
       if (e > s) lag_values[(s + 1):e] <- as.integer(df$Y_obs[s:(e - 1)] > 0)
-      lag_values[s] <- 0  # 每个受试者首期=0
+      lag_values[s] <- 0   # every patient has lag=0 at first term
     }
     df[[lag_col]] <- lag_values
   }
