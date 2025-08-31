@@ -48,6 +48,8 @@ model (required when \code{positivity = TRUE}).}
 \item{object}{An \code{mcmc_diag} object.}
 
 \item{pars}{Optional character vector of parameter names to display.}
+
+\item{use_pretty}{Logical; if \code{TRUE}, match \code{pars} against pretty names (default \code{TRUE}).}
 }
 \value{
 An object of class \code{mcmc_diag}, a list with:

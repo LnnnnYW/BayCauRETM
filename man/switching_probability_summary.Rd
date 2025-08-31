@@ -23,6 +23,9 @@ switching_probability_summary(
 \item{df}{A \code{data.frame} (e.g., from \code{preprocess_data()}) containing at least
 a subject id, a time index, and a binary treatment indicator.}
 
+\item{covariates}{Optional character vector of column names in \code{df} to adjust for
+in the switching hazard model. Default \code{NULL} (unadjusted).}
+
 \item{scale}{Character, \code{"mass"} (default) or \code{"hazard"}. See Details.}
 
 \item{x}{an object used to select a method.}
@@ -32,7 +35,7 @@ a subject id, a time index, and a binary treatment indicator.}
 \item{object}{A \code{switching_summary} object.}
 
 \item{type}{One of \code{"boxplot"} (per-interval boxplots of per-subject
-indicators with mean ± 95\% Wald bars overlaid) or \code{"line"} (mean curve with
+indicators with mean -+ 95\% Wald bars overlaid) or \code{"line"} (mean curve with
 95\% ribbon). Defaults to \code{"boxplot"}.}
 }
 \value{
@@ -41,7 +44,7 @@ An object of class \code{switching_summary}, a list with components:
 \item{by_k}{A data frame with one row per interval containing:
 k_idx, n (at-risk sample size), mean_p (mean
 probability on the chosen scale), Wald 95\% limits lo95/hi95,
-and q25}/q50/q75 for descriptive dispersion.}
+and q25/q50/q75 for descriptive dispersion.}
 \item{by_id_k}{Per-subject indicators used for boxplots:
 for scale="hazard", it is the 0/1 indicator of switching at \(k\)
 among the at-risk set; for scale="mass", it is the 0/1 indicator of
@@ -64,20 +67,21 @@ In discrete time these satisfy \(m(k) = S(k-1)\,h(k)\), where \(h(k)\) is the
 hazard and \(S(k-1)\) the probability of not yet switched before \(k\).
 }
 \details{
-Let \(A_{i,k}\) be subject \(i\)'s treatment at interval \(k\) and define
-\(R_{i,k}=\mathbf{1}\{\text{subject }i\text{ is alive and }k>1\}\). The event
-of switching at \(k\) is \(E_{i,k}=\mathbf{1}\{A_{i,k}\neq A_{i,k-1}\}\).
+Let \eqn{A_{i,k}} denote subject \eqn{i}'s treatment at interval \eqn{k}.
+Define the at-risk indicator \eqn{R_{i,k}} to be 1 if the subject is alive
+at the start of interval \eqn{k} (and \eqn{k>1}), and 0 otherwise.
+The switching indicator is \eqn{E_{i,k} = I\{ A_{i,k} \ne A_{i,k-1} \}}.
+
 \itemize{
-\item \strong{Hazard scale}: \(h(k)=\mathbb{E}(E_{i,k}\mid R_{i,k}=1)\),
-estimated by the at-risk mean of \(E_{i,k}\) at each \(k\).
-\item \strong{Mass scale}: \(m(k)=\mathbb{P}(\text{first switch at }k)\),
-estimated as the cohort mean of the first-switch indicator; this is
-numerically equivalent to \(S(k\!-\!1)\,h(k)\) with \(S(k\!-\!1)\) the
-product over \(j<k\) of \((1-h(j))\).
+\item \strong{Hazard scale}: \eqn{h(k)= \mathrm{E}\!\left[\,E_{i,k}\mid R_{i,k}=1\,\right]},
+estimated by the at-risk mean of \eqn{E_{i,k}} at each \eqn{k}.
+\item \strong{Mass scale}: Let \eqn{T} be the first switching interval; \eqn{m(k)=P(T=k)}.
+Numerically, \eqn{m(k)=S(k-1)\,h(k)} with
+\eqn{S(k-1)=\prod_{j<k}\{1-h(j)\}}.
 }
-The summary is purely descriptive (nonparametric) and does not fit a model;
-it is intended to contextualize causal estimates and reveal time-structured
-policies (e.g., delayed initiation or systematic stopping).
+The summary is purely descriptive (nonparametric) and does not fit a model; it is
+intended to contextualize causal estimates and reveal time-structured policies
+(e.g., delayed initiation or systematic stopping).
 }
 \section{Functions}{
 \itemize{

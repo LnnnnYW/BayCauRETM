@@ -14,6 +14,8 @@
 #'
 #' @param df A `data.frame` (e.g., from `preprocess_data()`) containing at least
 #'   a subject id, a time index, and a binary treatment indicator.
+#' @param covariates Optional character vector of column names in `df` to adjust for
+#'  in the switching hazard model. Default `NULL` (unadjusted).
 #' @param scale Character, `"mass"` (default) or `"hazard"`. See Details.
 #' @inheritParams base::print
 #'
@@ -22,7 +24,7 @@
 #'   \item{by_k}{A data frame with one row per interval containing:
 #'     k_idx, n (at-risk sample size), mean_p (mean
 #'     probability on the chosen scale), Wald 95% limits lo95/hi95,
-#'     and q25}/q50/q75 for descriptive dispersion.}
+#'     and q25/q50/q75 for descriptive dispersion.}
 #'   \item{by_id_k}{Per-subject indicators used for boxplots:
 #'     for scale="hazard", it is the 0/1 indicator of switching at \(k\)
 #'     among the at-risk set; for scale="mass", it is the 0/1 indicator of
@@ -30,21 +32,24 @@
 #'   \item{id_col,time_col,treat_col,death_col}{Resolved column names.}
 #'   \item{scale}{The scale used ("mass" or "hazard").}
 #' }
+#'
 #' @details
-#' Let \(A_{i,k}\) be subject \(i\)'s treatment at interval \(k\) and define
-#' \(R_{i,k}=\mathbf{1}\{\text{subject }i\text{ is alive and }k>1\}\). The event
-#' of switching at \(k\) is \(E_{i,k}=\mathbf{1}\{A_{i,k}\neq A_{i,k-1}\}\).
+#' Let \eqn{A_{i,k}} denote subject \eqn{i}'s treatment at interval \eqn{k}.
+#' Define the at-risk indicator \eqn{R_{i,k}} to be 1 if the subject is alive
+#' at the start of interval \eqn{k} (and \eqn{k>1}), and 0 otherwise.
+#' The switching indicator is \eqn{E_{i,k} = I\{ A_{i,k} \ne A_{i,k-1} \}}.
+#'
 #' \itemize{
-#'   \item \strong{Hazard scale}: \(h(k)=\mathbb{E}(E_{i,k}\mid R_{i,k}=1)\),
-#'         estimated by the at-risk mean of \(E_{i,k}\) at each \(k\).
-#'   \item \strong{Mass scale}: \(m(k)=\mathbb{P}(\text{first switch at }k)\),
-#'         estimated as the cohort mean of the first-switch indicator; this is
-#'         numerically equivalent to \(S(k\!-\!1)\,h(k)\) with \(S(k\!-\!1)\) the
-#'         product over \(j<k\) of \((1-h(j))\).
+#'   \item \strong{Hazard scale}: \eqn{h(k)= \mathrm{E}\!\left[\,E_{i,k}\mid R_{i,k}=1\,\right]},
+#'         estimated by the at-risk mean of \eqn{E_{i,k}} at each \eqn{k}.
+#'   \item \strong{Mass scale}: Let \eqn{T} be the first switching interval; \eqn{m(k)=P(T=k)}.
+#'         Numerically, \eqn{m(k)=S(k-1)\,h(k)} with
+#'         \eqn{S(k-1)=\prod_{j<k}\{1-h(j)\}}.
 #' }
-#' The summary is purely descriptive (nonparametric) and does not fit a model;
-#' it is intended to contextualize causal estimates and reveal time-structured
-#' policies (e.g., delayed initiation or systematic stopping).
+#' The summary is purely descriptive (nonparametric) and does not fit a model; it is
+#' intended to contextualize causal estimates and reveal time-structured policies
+#' (e.g., delayed initiation or systematic stopping).
+
 #'
 #' @examples
 #' \dontrun{
@@ -224,7 +229,7 @@ summary.switching_summary <- function(object, ...) {
 
 #' @describeIn switching_probability_summary Plot switching summaries across intervals.
 #' @param type One of `"boxplot"` (per-interval boxplots of per-subject
-#'   indicators with mean ± 95% Wald bars overlaid) or `"line"` (mean curve with
+#'   indicators with mean -+ 95% Wald bars overlaid) or `"line"` (mean curve with
 #'   95% ribbon). Defaults to `"boxplot"`.
 #' @param ... Passed to `ggplot2::geom_boxplot()` when `type="boxplot"`.
 #' @export
@@ -275,9 +280,9 @@ plot.switching_summary <- function(x, type = c("boxplot","line"), ...) {
       ggplot2::scale_x_continuous(breaks = unique(by_k$k_idx)) +
       ggplot2::labs(
         title = if (x$scale == "mass")
-          "Switching probability over intervals (mean ± 95% bands)"
+          "Switching probability over intervals (mean -+ 95% bands)"
         else
-          "Switching hazard over intervals (mean ± 95% bands)",
+          "Switching hazard over intervals (mean -+ 95% bands)",
         x = "Interval (k_idx)", y = "Probability"
       ) +
       ggplot2::coord_cartesian(ylim = c(0, 1)) +

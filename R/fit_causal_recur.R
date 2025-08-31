@@ -31,9 +31,6 @@
 #' @param num_chains Integer. Number of MCMC chains (default `4`).
 #' @param iter Integer. Total iterations *per* chain including warm-up
 #'   (default `2000`).
-#' @param stan_model_file Path to a **pre-compiled** Stan model object saved
-#'   via `saveRDS()` (default `"inst/stan/causal_recur_model.rds"`). The file
-#'   must exist; otherwise the function stops.
 #' @param control List passed to `rstan::sampling()` (e.g.,
 #'   `list(adapt_delta = 0.95, max_treedepth = 15)`).
 #' @param cores Integer. Number of CPU cores to use for sampling (passed to

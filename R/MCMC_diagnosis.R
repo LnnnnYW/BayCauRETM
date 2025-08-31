@@ -211,6 +211,7 @@ summary.mcmc_diag <- function(object, ...) {
 #' @describeIn mcmc_diag Display stored trace plots; optionally filter by `pars`.
 #' @param x An `mcmc_diag` object.
 #' @param pars Optional character vector of parameter names to display.
+#' @param use_pretty Logical; if `TRUE`, match `pars` against pretty names (default `TRUE`).
 #' @param ... Additional arguments (ignored).
 #' @export
 

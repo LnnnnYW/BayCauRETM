@@ -93,10 +93,6 @@ of \code{I(Y_obs > 0)}. If the column already exists, it is left unchanged.}
 \item{object}{A \code{causal_recur_fit} object.}
 
 \item{pars_to_report}{Character vector of parameter names (regex allowed).}
-
-\item{stan_model_file}{Path to a \strong{pre-compiled} Stan model object saved
-via \code{saveRDS()} (default \code{"inst/stan/causal_recur_model.rds"}). The file
-must exist; otherwise the function stops.}
 }
 \value{
 An object of class \code{causal_recur_fit} (list) with elements
