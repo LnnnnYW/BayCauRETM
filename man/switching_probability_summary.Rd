@@ -7,7 +7,11 @@
 \alias{plot.switching_summary}
 \title{Compute switching-probability summary}
 \usage{
-switching_probability_summary(df, covariates = NULL)
+switching_probability_summary(
+  df,
+  covariates = NULL,
+  scale = c("mass", "hazard")
+)
 
 \method{print}{switching_summary}(x, ...)
 
@@ -16,69 +20,83 @@ switching_probability_summary(df, covariates = NULL)
 \method{plot}{switching_summary}(x, type = c("boxplot", "line"), ...)
 }
 \arguments{
-\item{df}{A \code{data.frame} from \code{preprocess_data()} (or similarly structured),
-containing at least \code{pat_id}, \code{k_idx}, \code{A}, \code{Y_obs} (if \code{lagYK} is missing),
-and any additional covariates. If \code{k_idx} is missing, it is created as the
-within-subject row index. If \code{lagYK} is missing, it is auto-generated as
-\code{I(lag(Y_obs) > 0)} within subject.}
+\item{df}{A \code{data.frame} (e.g., from \code{preprocess_data()}) containing at least
+a subject id, a time index, and a binary treatment indicator.}
 
-\item{covariates}{Character vector of covariate names to include in the
-hazard model, or \code{NULL} to use only \code{lagYK} and a factorized time index.}
+\item{scale}{Character, \code{"mass"} (default) or \code{"hazard"}. See Details.}
 
 \item{x}{an object used to select a method.}
 
-\item{...}{Passed to \code{ggplot2::geom_boxplot()} when \code{type = "boxplot"}.}
+\item{...}{Passed to \code{ggplot2::geom_boxplot()} when \code{type="boxplot"}.}
 
 \item{object}{A \code{switching_summary} object.}
 
-\item{type}{One of \code{"ribbon"} or \code{"boxplot"}. \code{"ribbon"} shows mean with an
-interquartile ribbon (p25-p75); \code{"boxplot"} shows per-interval distributions
-with an optional mean overlay.}
-
-\item{show_mean}{Logical. Whether to overlay the mean curve (default \code{TRUE}).}
-
-\item{theme_fn}{A \strong{ggplot2} theme function (default \code{ggplot2::theme_minimal}).}
+\item{type}{One of \code{"boxplot"} (per-interval boxplots of per-subject
+indicators with mean ± 95\% Wald bars overlaid) or \code{"line"} (mean curve with
+95\% ribbon). Defaults to \code{"boxplot"}.}
 }
 \value{
-An object of class \code{switching_summary}, a list with:
-\itemize{
-\item \strong{df2} - the input data with added columns:
-\code{hazard} (predicted switching probability at each interval),
-\code{surv_prob} (probability of not yet switched before the interval),
-and \code{switch_prob} (joint probability of surviving to the interval and
-switching at that interval).
-\item \strong{summary_df} - data frame summarizing \code{switch_prob} by \code{k_idx}:
-mean, median, 5th/25th/75th/95th percentiles.
-\item \strong{model} - the fitted \code{glm} object (\code{family = binomial}).
+An object of class \code{switching_summary}, a list with components:
+\describe{
+\item{by_k}{A data frame with one row per interval containing:
+k_idx, n (at-risk sample size), mean_p (mean
+probability on the chosen scale), Wald 95\% limits lo95/hi95,
+and q25}/q50/q75 for descriptive dispersion.}
+\item{by_id_k}{Per-subject indicators used for boxplots:
+for scale="hazard", it is the 0/1 indicator of switching at \(k\)
+among the at-risk set; for scale="mass", it is the 0/1 indicator of
+“first switch occurs at \(k\)”.}
+\item{id_col,time_col,treat_col,death_col}{Resolved column names.}
+\item{scale}{The scale used ("mass" or "hazard").}
 }
 }
 \description{
-Fit a discrete-time logistic hazard model for treatment initiation
-("switching"), compute subject-level switching probabilities per interval,
-and summarize them by interval.
+Summarize how often subjects switch (initiate) treatment across follow-up
+intervals. Two complementary scales are supported:
+\itemize{
+\item mass (default): the marginal probability of initiating at interval \(k\),
+i.e., the proportion of the cohort that switches exactly at \(k\).
+\item hazard: the conditional probability of switching at interval \(k\)
+given the subject has not switched before \(k\).
+}
+
+In discrete time these satisfy \(m(k) = S(k-1)\,h(k)\), where \(h(k)\) is the
+hazard and \(S(k-1)\) the probability of not yet switched before \(k\).
 }
 \details{
-The discrete-time hazard is modeled via \code{glm(A ~ lagYK + factor(k_idx) + covariates, family = binomial)}. After prediction, for each subject the survival
-probability is computed as the cumulative product of \code{(1 - hazard)} lagged by
-one interval; the switching probability at each interval is
-\code{surv_prob * hazard}. If a provided \code{lagYK} is not binary, it is coerced to
-\code{as.numeric(lagYK > 0)}.
+Let \(A_{i,k}\) be subject \(i\)'s treatment at interval \(k\) and define
+\(R_{i,k}=\mathbf{1}\{\text{subject }i\text{ is alive and }k>1\}\). The event
+of switching at \(k\) is \(E_{i,k}=\mathbf{1}\{A_{i,k}\neq A_{i,k-1}\}\).
+\itemize{
+\item \strong{Hazard scale}: \(h(k)=\mathbb{E}(E_{i,k}\mid R_{i,k}=1)\),
+estimated by the at-risk mean of \(E_{i,k}\) at each \(k\).
+\item \strong{Mass scale}: \(m(k)=\mathbb{P}(\text{first switch at }k)\),
+estimated as the cohort mean of the first-switch indicator; this is
+numerically equivalent to \(S(k\!-\!1)\,h(k)\) with \(S(k\!-\!1)\) the
+product over \(j<k\) of \((1-h(j))\).
+}
+The summary is purely descriptive (nonparametric) and does not fit a model;
+it is intended to contextualize causal estimates and reveal time-structured
+policies (e.g., delayed initiation or systematic stopping).
 }
 \section{Functions}{
 \itemize{
-\item \code{print(switching_summary)}: Print the summary table of switching probabilities by interval.
+\item \code{print(switching_summary)}: Print the interval-level summary table.
 
-\item \code{summary(switching_summary)}: Alias for \code{print()}.
+\item \code{summary(switching_summary)}: Summary the interval-level summary table
 
-\item \code{plot(switching_summary)}: Plot switching probability over time.
+\item \code{plot(switching_summary)}: Plot switching summaries across intervals.
 
 }}
 \examples{
 \dontrun{
-sw <- switching_probability_summary(processed_df, covariates = c("age", "sex"))
-print(sw)       # prints summary_df
-summary(sw)     # same as print
-plot(sw)        # ribbon or boxplot summaries
+# default: marginal "mass" scale
+sw <- switching_probability_summary(fit$data_preprocessed)
+plot(sw, type = "boxplot")
+
+# conditional hazard view
+sw_h <- switching_probability_summary(fit$data_preprocessed, scale = "hazard")
+plot(sw_h, type = "line")
 }
 
 }

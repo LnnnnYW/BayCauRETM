@@ -46,20 +46,16 @@ s_vec  <- c(3, 6, 9)
 
 This step prepares the longitudinal dataset for analysis, including normalization and handling of missing values.
 
-The package expects a long panel with: unique subject id (id), discrete time index (k), treatment (Ak), recurrent count (Yk), terminal event indicator (Tk), and optional covariates (here L.1, L.2).
+The package expects a long panel with: unique subject id ($id$), discrete time index ($k$), treatment ($A_k$), recurrent count ($Y_k$), terminal event indicator ($T_k$), and optional covariates (here $L.1$, $L.2$).
 
-History lagYk (default 0 at each subject’s first interval) captures short-term dependence. In our design, lagged history terms are fully flexible: users may supply their own lag variables (e.g., lagYk, higher-order lags, or custom functions of past outcomes) directly in the dataset and reference them in the formulas, or omit them entirely. If no lag variable is provided but lag terms are specified in the formulas, the function automatically constructs the appropriate lag internally. This guarantees valid defaults while allowing investigators to encode any history structure they need.
+History $lagY_k$ (default 0 at each subject’s first interval) captures short-term dependence. In our design, lagged history terms are fully flexible: users may supply their own lag variables (e.g., lagYk, higher-order lags, or custom functions of past outcomes) directly in the dataset and reference them in the formulas, or omit them entirely. If no lag variable is provided but lag terms are specified in the formulas, the function automatically constructs the appropriate lag internally. This guarantees valid defaults while allowing investigators to encode any history structure they need.
 
-Continuous covariates are standardized to improve sampler geometry and prior interpretability.
-
-Remove observations with missing values for variables used in the model formulas; if imputation is required, perform it upstream and re-use the same transform for prediction.
-
-K equals the number of unique time intervals and controls the length of each model’s piecewise baseline.
+Continuous covariates are standardized to improve sampler geometry and prior interpretability. Remove observations with missing values for variables used in the model formulas. K equals the number of unique time intervals and controls the length of each model’s piecewise baseline.
 
 ```{r}
 load("data.Rdata")
 df_fit <- df %>%
-  # filter(id %in% 1:100) %>%           #for subset
+  filter(id %in% 1:100) %>%           #for subset
   arrange(id, k) %>%
   mutate(k_fac = as.integer(factor(k, levels = sort(unique(k))))) %>%
   group_by(id) %>%
@@ -79,15 +75,15 @@ K <- length(unique(df_fit$k_fac))
 
 We now fit the joint model for the recurrent events and terminal process using Stan.
 
-We fit a joint Bayesian model for (i) the terminal process Tk and (ii) the recurrent evernts Yk, sharing the discrete time structure and history recoords. Each sub-model includes: the current treatment, lagged outcomes (e.g. I(lagYk\^2)), standardized covariates (L.1, L.2), and a piecewise-constant baseline (time_baseline_T[j] / time_baseline_Y[j]).
+We fit a joint Bayesian model for (i) the terminal process $T_k$ and (ii) the recurrent events $Y_k$, sharing the discrete time structure and history records. Each sub-model includes: the current treatment, lagged outcomes (e.g., $I(lagY_k^2)$), standardized covariates $(L.1, L.2)$, and a piecewise-constant baseline (time_baseline_T[k], time_baseline_Y[k]).
 
 We expose variable names in diagnostics and summaries as follows:
 
--   beta_T:L.1, beta_T:L.2, beta_Y:L.1, beta_Y:L.2: covariate (L.1, L.2 here) effects in T/Y models.
+-   $\beta_{T:L.1},\ \beta_{T:L.2},\ \beta_{Y:L.1},\ \beta_{Y:L.2}$: covariate ($L.1$, $L.2$ here) effects in $T$/$Y$ mode
 
--   theta_T_lag:I(lagYk\^2), theta_Y_lag:I(lagYk\^2): coefficients for lagged outcome features.
+-   $\theta_{T,\text{lag}:I(\text{lagYk}^2)},\ \theta_{Y,\text{lag}:I(\text{lagYk}^2)}$: coefficients for lagged outcome features.
 
--   time_baseline_T[j], time_baseline_Y[j]: j-th time-interval baselines capturing secular time trends.
+-   time_baseline_T[j], time_baseline_Y[j]: $j$-th time-interval baselines capturing secular time trends.
 
 -   treatment_effect_T, treatment_effect_Y: treatment effects for terminal and recurrent processes.
 
@@ -110,37 +106,50 @@ fit <- fit_causal_recur(
 ## 4. MCMC Diagnostics
 
 Evaluate convergence and identify any problematic chains. We report R-hat (target ≈ 1.00), effective sample size (should be large), and show traceplots grouped by model block.
+By default, the mcmc_diagnosis() and its plot function checks multiple model blocks, including the T-model, Y-model, treatment effects, and lag terms. However, for simplicity and clarity, users can focus on a specific component as follows.
+Specifically, "T-model" refers to the baseline hazard and covariate effects in the terminal event model, while "Y-model" targets the same components in the recurrent event model. "treatment_effect_T" and "treatment_effect_Y" refer to the treatment effects in the T-model and Y-model, respectively. "Lag" corresponds to the lag kernel terms that capture dependencies across time. These names can be supplied directly to the pars argument in the plot() call, and matching is case-insensitive and supports partial keyword matching for convenience.
 
 ```{r}
 # MCMC Diagnosis
 rstan::check_hmc_diagnostics(fit$stan_fit)
 diag <- mcmc_diagnosis(fit)
-plot(diag)
+plot(diag, pars = "T-model") 
 ```
 
 ## 5. G-Computation
 
-We simulate potential outcomes under hypothetical treatment strategies to estimate causal contrasts.
+We evaluate treatment–start strategies $s\in\mathcal S$ over intervals $k=1,\dots,K$ using Bayesian g-computation with death as a terminal event. For subject $i$, under strategy $s$ we simulate recurrent counts $Y_{ik}^{(m)}(s)$ and the not-at-risk indicator $T_{ik}^{(m)}(s)\in\{0,1\}$ (equals 1 from the first interval after death). Let $L_i$ be the subject’s baseline covariate vector. Our estimand is
 
-We target a marginal causal estimand that contrasts the expected cumulative outcome trajectory under different treatment initiation strategies. Formally, let $$
-\Delta(s, K+1) \;=\; 
-\mathbb{E}\!\left\{ Y_{1:K+1}(s) \right\} \;-\; 
-\mathbb{E}\!\left\{ Y_{1:K+1}(\text{ref}) \right\},
-$$ where $s \in s_{\text{vec}}$ denotes a treatment-start interval strategy and “ref” denotes the reference strategy (e.g., no intervention). Here $Y_{1:K+1}(s)$ is the cumulative number of events through interval $K+1$ under strategy $s$.
+$$
+\theta_s(K)
+=\mathbb{E}\!\left[
+\frac{\sum_{k=1}^{K} Y_{ik}^{(m)}(s)}
+     {K-\sum_{k=1}^{K} T_{ik}^{(m)}(s)}
+\right],
+$$
 
-Estimation proceeds via Bayesian g-computation. For each posterior draw of model parameters, we simulate forward the joint process of survival and recurrent events under the intervention sequence $A_{1:K}(s)$, average across subjects, and repeat for the reference strategy. The causal contrast $\Delta(s,K+1)$ is then obtained as the posterior distribution of their difference: $$
-\Delta(s,K+1)^{(m)} \;=\; 
-\frac{1}{n}\sum_{i=1}^n 
-\Bigg\{
-\frac{\sum_{k=1}^K Y^{(m)}_{ik}(s)}
-     {K - \sum_{k=1}^K T^{(m)}_{ik}(s)}
--
-\frac{\sum_{k=1}^K Y^{(m)}_{ik}(\text{ref})}
-     {K - \sum_{k=1}^K T^{(m)}_{ik}(\text{ref})}
-\Bigg\},
-$$ where $Y^{(m)}_{ik}(s)$ and $T^{(m)}_{ik}(s)$ denote simulated event and death indicators for subject $i$ at interval $k$ under posterior draw $m$. The full posterior of $\Delta(s,K+1)$ is summarized by its mean and credible interval. Wide intervals centered near zero indicate weak evidence for a treatment effect, in which case one may consider larger samples, stronger priors, or alternative summaries such as median effects or exceedance probabilities.
+and the contrast $\Delta(s,s')=\theta_s(K)-\theta_{s'}(K)$. In the package we set $s'=K+1$ as the reference (“never treat”).
 
-This simulation-based g-computation ensures that both survival and recurrent event processes are attributed consistently to each strategy, thereby yielding a valid causal interpretation of treatment-timing contrasts.
+For each posterior draw $m$, g_computation() approximates the conditional expectation given $L_i$ by averaging over $B$ Monte-Carlo replicates:
+
+$$
+R_i^{(m)}(s)
+=\frac{1}{B}\sum_{b=1}^{B}
+\left[
+\frac{\sum_{k=1}^{K} Y_{ikb}^{(m)}(s)}
+     {K-\sum_{k=1}^{K} T_{ikb}^{(m)}(s)}
+\right].
+$$
+
+Then it integrates over the baseline distribution of $L$ using Dirichlet weights $\pi_i^{(m)}$ (Bayesian bootstrap):
+
+$$
+\theta_s^{(m)}(K)=\sum_{i=1}^{n}\pi_i^{(m)} R_i^{(m)}(s),
+\qquad
+\Delta^{(m)}(s)=\theta_s^{(m)}(K)-\theta_{K+1}^{(m)}(K).
+$$
+
+Posterior draws $\{\Delta^{(m)}(s)\}_m$ are summarized by their mean and 95% credible interval.
 
 ```{r}
 baseline_df <- fit$data_preprocessed %>%

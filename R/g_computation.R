@@ -94,13 +94,15 @@ g_computation <- function(Lmat = NULL,
   }
   P_data <- ncol(Lmat)
 
-  post <- rstan::extract(
-    fit_out$stan_fit,
-    pars = c("beta0","beta1","betaL","theta0","theta1","thetaL","thetaLag"),
-    permuted = TRUE
-  )
+  post   <- rstan::extract(fit_out$stan_fit, permuted = TRUE)
   ndraws <- length(post$beta1)
   P_stan <- if (is.null(dim(post$betaL))) 0L else dim(post$betaL)[2]
+
+  pick_name <- function(cands) {
+    nm <- intersect(cands, names(post))
+    if (length(nm)) nm[1] else NULL
+  }
+  name_Tlag <- pick_name(c("betaLag", "betaTLag", "thetaTLag_T", "beta_tlag", "betaLag_T"))
 
   take_betaL <- function(m) {
     if (P_stan == 0L || P_data == 0L) numeric(0) else as.numeric(post$betaL[m, 1:min(P_data, P_stan), drop = TRUE])
@@ -114,56 +116,114 @@ g_computation <- function(Lmat = NULL,
   build_lag_mm_from_y <- function(y_prev) {
     n <- length(y_prev)
     if (!length(lag_terms_used)) return(matrix(0, n, 0))
+
     newdat <- setNames(data.frame(y_prev), lag_col)
-    f <- stats::reformulate(unique(gsub("^I\\((.*)\\)$", "\\1", lag_terms_used)), intercept = FALSE)
+    f <- stats::reformulate(unique(gsub("^I\\((.*)\\)$", "\\1", lag_terms_used)),
+                            intercept = FALSE)
     environment(f) <- env_Y
     mm_full <- stats::model.matrix(f, newdat, na.action = stats::na.pass)
 
-    miss <- setdiff(lag_terms_used, colnames(mm_full))
-    mm   <- if (length(miss)) cbind(mm_full, matrix(0, n, length(miss), dimnames = list(NULL, miss))) else mm_full
-    mm[, lag_terms_used, drop = FALSE]
+    mm <- matrix(0, nrow(mm_full), length(lag_terms_used),
+                 dimnames = list(NULL, lag_terms_used))
+    keep <- intersect(lag_terms_used, colnames(mm_full))
+    if (length(keep)) {
+      mm[, match(keep, lag_terms_used)] <- mm_full[, keep, drop = FALSE]
+    }
+    mm
   }
+
+  lag_terms_used_T <- labels$T_lag %||% character(0)
+  env_T <- attr(stats::terms(info$formula_T), ".Environment")
+  build_lag_mm_from_y_T <- function(y_prev) {
+    n <- length(y_prev)
+    if (!length(lag_terms_used_T)) return(matrix(0, n, 0))
+
+    newdat <- setNames(data.frame(y_prev), lag_col)
+    f <- stats::reformulate(unique(gsub("^I\\((.*)\\)$", "\\1", lag_terms_used_T)),
+                            intercept = FALSE)
+    environment(f) <- env_T
+    mm_full <- stats::model.matrix(f, newdat, na.action = stats::na.pass)
+
+    mm <- matrix(0, nrow(mm_full), length(lag_terms_used_T),
+                 dimnames = list(NULL, lag_terms_used_T))
+    keep <- intersect(lag_terms_used_T, colnames(mm_full))
+    if (length(keep)) {
+      mm[, match(keep, lag_terms_used_T)] <- mm_full[, keep, drop = FALSE]
+    }
+    mm
+  }
+
 
   sim_interv <- function(L_TY, n,
                          beta0, beta1, betaL,
-                         theta0, theta1, thetaL, thetaLag_vec,
+                         theta0, theta1, thetaL, thetaLag_vec, betaLag_vec,
                          s, K, B) {
     eta_beta  <- if (length(betaL))  as.numeric(L_TY %*% betaL)  else rep(0, n)
     eta_theta <- if (length(thetaL)) as.numeric(L_TY %*% thetaL) else rep(0, n)
-
-    abar_vec <- as.integer(seq_len(K) >= s)
+    abar_vec  <- as.integer(seq_len(K) >= s)
 
     ybar <- array(0, dim = c(n, K, B))
-    tbar <- array(0, dim = c(n, K, B))
+    tbar <- array(0L, dim = c(n, K, B))
 
-    # k = 1
+    ## k = 1
+    p_death1 <- plogis(beta0[1] + abar_vec[1] * beta1 + eta_beta)
+    tbar[, 1, ] <- matrix(stats::rbinom(n * B, 1, p_death1), n, B)
+    alive1 <- (tbar[, 1, ] == 0L)
+
     lambda1 <- exp(theta0[1] + abar_vec[1] * theta1 + eta_theta)
-    ybar[, 1, ] <- matrix(stats::rpois(n * B, lambda1), n, B)
+    lam_mat1 <- matrix(lambda1, n, B)
+    y1 <- matrix(0, n, B)
+    y1[alive1] <- stats::rpois(sum(alive1), lam_mat1[alive1])
+    ybar[, 1, ] <- y1
 
-    # k = 2...K
+    ## k = 2...K
     for (k in 2:K) {
-      abar_k  <- abar_vec[k]
-      p_death <- plogis(beta0[k] + abar_k * beta1 + eta_beta)
-      tbar[, k, ] <- matrix(stats::rbinom(n * B, 1, p_death), n, B)
+      abar_k <- abar_vec[k]
+      lag_term_T <- matrix(0, n, B)
+      if (length(betaLag_vec)) {
+        for (b in 1:B) {
+          FT_b <- build_lag_mm_from_y_T(ybar[, k - 1, b])
+          if (ncol(FT_b)) {
+            pT <- min(ncol(FT_b), length(betaLag_vec))
+            lag_term_T[, b] <- FT_b[, seq_len(pT), drop = FALSE] %*% betaLag_vec[seq_len(pT)]
+          }
+        }
+      }
+
+      lp_T    <- beta0[k] + abar_k * beta1 + eta_beta + lag_term_T
+      p_death <- plogis(lp_T)
+
+      # Only subjects who are still alive do resample whether death occurs at period k
+      t_prev <- tbar[, k - 1, ]
+      die_k  <- matrix(stats::rbinom(n * B, 1, as.vector(p_death)), n, B)
+      tbar[, k, ] <- ifelse(t_prev == 1L, 1L, die_k)
+
 
       lag_term <- matrix(0, n, B)
       if (length(thetaLag_vec)) {
         for (b in 1:B) {
           F_b <- build_lag_mm_from_y(ybar[, k - 1, b])
-          if (ncol(F_b)) lag_term[, b] <- F_b %*% thetaLag_vec[seq_len(ncol(F_b))]
+          if (ncol(F_b)) {
+            p <- min(ncol(F_b), length(thetaLag_vec))
+            lag_term[, b] <- F_b[, seq_len(p), drop = FALSE] %*% thetaLag_vec[seq_len(p)]
+          }
         }
       }
-      mu_k <- theta0[k] + abar_k * theta1 + eta_theta + lag_term
-      mu_k <- pmin(mu_k, 700)
-      ybar[, k, ] <- matrix(stats::rpois(n * B, exp(mu_k)), n, B)
+
+      mu_base <- theta0[k] + abar_k * theta1 + eta_theta
+      mu_mat  <- matrix(mu_base, n, B) + lag_term
+      mu_mat  <- pmin(mu_mat, 700)
+      alive_k <- (tbar[, k, ] == 0L)
+
+      yk <- matrix(0, n, B)
+      yk[alive_k] <- stats::rpois(sum(alive_k), exp(mu_mat[alive_k]))
+      ybar[, k, ] <- yk
     }
 
-    alive <- array(1L, dim = c(n, K, B))
-    if (K >= 2) for (k in 2:K) alive[, k, ] <- (alive[, k - 1, ] == 1L) & (tbar[, k - 1, ] == 0L)
-
-    num_alive <- apply(ybar * alive, c(1, 3), sum)
-    den_alive <- apply(alive,        c(1, 3), sum)
-    ir <- ifelse(den_alive > 0, num_alive / den_alive, NA_real_)
+    alive_end <- 1L - tbar
+    num <- apply(ybar,      c(1, 3), sum)
+    den <- apply(alive_end, c(1, 3), sum)
+    ir  <- ifelse(den > 0, num / den, NA_real_)
     rowMeans(ir, na.rm = TRUE)
   }
 
@@ -177,10 +237,12 @@ g_computation <- function(Lmat = NULL,
     on.exit(parallel::stopCluster(cl), add = TRUE)
     parallel::clusterExport(
       cl,
-      varlist = c("sim_interv", "build_lag_mm_from_y", "Lmat",
-                  "n_pat", "K", "B", "post"),
+      varlist = c("sim_interv",
+                  "build_lag_mm_from_y", "build_lag_mm_from_y_T",
+                  "Lmat", "n_pat", "K", "B", "post", "name_Tlag"),
       envir = environment()
     )
+
   }
   par_apply <- if (is.null(cl)) lapply else function(X, FUN) parallel::parLapply(cl, X, FUN)
 
@@ -195,9 +257,12 @@ g_computation <- function(Lmat = NULL,
         theta0 = post$theta0[m, ],
         theta1 = post$theta1[m],
         thetaL = take_thetaL(m),
-        thetaLag_vec = {
-          th <- post$thetaLag[m, , drop = FALSE]
-          as.numeric(th)
+        thetaLag_vec = { th <- post$thetaLag[m, , drop = FALSE]; as.numeric(th) },
+        betaLag_vec  = {
+          if (is.null(name_Tlag)) numeric(0) else {
+            th <- post[[name_Tlag]][m, , drop = FALSE]
+            as.numeric(th)
+          }
         },
         s = s, K = K, B = B
       )

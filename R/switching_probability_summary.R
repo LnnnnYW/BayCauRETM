@@ -30,7 +30,6 @@
 #'   \item{id_col,time_col,treat_col,death_col}{Resolved column names.}
 #'   \item{scale}{The scale used ("mass" or "hazard").}
 #' }
-#'
 #' @details
 #' Let \(A_{i,k}\) be subject \(i\)'s treatment at interval \(k\) and define
 #' \(R_{i,k}=\mathbf{1}\{\text{subject }i\text{ is alive and }k>1\}\). The event
@@ -106,8 +105,12 @@ switching_probability_summary <- function(df, covariates = NULL,
     dplyr::group_by(.data[[id_col]]) |>
     dplyr::mutate(
       A_prev = dplyr::lag(.data[[treat_col]], default = 0),
-      alive_to_km1 = if (!is.na(death_col))
-        c(1L, cumprod(1L - .data[[death_col]][-length(.data[[death_col]])])) else 1L,
+      alive_to_km1 = if (!is.na(death_col)) {
+        v <- .data[[death_col]]
+        c(1L, cumprod(1L - v[-length(v)]))
+      } else {
+        rep(1L, dplyr::n())
+      },
       at_risk = (alive_to_km1 == 1L) & (A_prev == 0)
     ) |>
     dplyr::ungroup()
@@ -150,13 +153,12 @@ switching_probability_summary <- function(df, covariates = NULL,
   d$hazard <- haz_hat
 
   if (scale == "mass") {
-    # S_{k-1} from predicted hazards (per id, cumulative product up to k-1)
     d <- d |>
       dplyr::group_by(.data[[id_col]]) |>
       dplyr::mutate(
-        one_minus_h = dplyr::if_else(is.finite(hazard), 1 - hazard, 1),
-        S_km1 = dplyr::lag(cumprod(one_minus_h), default = 1),
-        switch_prob = S_km1 * hazard
+        one_minus_h = dplyr::if_else(at_risk & is.finite(hazard), 1 - hazard, 1),
+        S_km1       = dplyr::lag(cumprod(one_minus_h), default = 1),
+        switch_prob = dplyr::if_else(at_risk & is.finite(hazard), S_km1 * hazard, 0)
       ) |>
       dplyr::ungroup()
   } else {
@@ -166,13 +168,15 @@ switching_probability_summary <- function(df, covariates = NULL,
 
   d_plot <- d[at_risk_rows, , drop = FALSE]
 
-  by_k <- d_plot |>
+  N_ids <- dplyr::n_distinct(d[[id_col]])
+
+  by_k <- d |>
     dplyr::group_by(.data[[time_col]]) |>
     dplyr::summarise(
-      n      = dplyr::n(),
-      mean   = mean(switch_prob, na.rm = TRUE),
-      sd_    = stats::sd(switch_prob, na.rm = TRUE),
-      se     = ifelse(n > 0, sd_ / sqrt(n), NA_real_),
+      n_at_risk = sum(at_risk),
+      mean   = sum(switch_prob, na.rm = TRUE) / N_ids,   # 总体质量 P(W=k)
+      sd_    = stats::sd(switch_prob, na.rm = TRUE),     # 以“全体”为样本
+      se     = sd_ / sqrt(N_ids),
       lo95   = pmax(0, mean - 1.96 * se),
       hi95   = pmin(1, mean + 1.96 * se),
       p25    = stats::quantile(switch_prob, 0.25, na.rm = TRUE),
@@ -181,6 +185,7 @@ switching_probability_summary <- function(df, covariates = NULL,
       .groups = "drop"
     ) |>
     dplyr::rename(k_idx = !!time_col)
+
 
   out <- list(
     df_haz    = d,
@@ -199,8 +204,7 @@ switching_probability_summary <- function(df, covariates = NULL,
 
 # print / summary / plot methods
 
-#' @describeIn switching_probability_summary
-#' Print the interval-level summary table.
+#' @describeIn switching_probability_summary Print the interval-level summary table.
 #' @export
 
 print.switching_summary <- function(x, ...) {
@@ -209,7 +213,7 @@ print.switching_summary <- function(x, ...) {
   invisible(x$by_k)
 }
 
-#' @describeIn switching_probability_summary
+#' @describeIn switching_probability_summary Summary the interval-level summary table
 #' @param object A `switching_summary` object.
 #' @method summary switching_summary
 #' @export
@@ -218,9 +222,7 @@ summary.switching_summary <- function(object, ...) {
   print(object, ...)
 }
 
-#' @describeIn switching_probability_summary
-#' Plot switching summaries across intervals.
-#'
+#' @describeIn switching_probability_summary Plot switching summaries across intervals.
 #' @param type One of `"boxplot"` (per-interval boxplots of per-subject
 #'   indicators with mean ± 95% Wald bars overlaid) or `"line"` (mean curve with
 #'   95% ribbon). Defaults to `"boxplot"`.
@@ -233,7 +235,7 @@ plot.switching_summary <- function(x, type = c("boxplot","line"), ...) {
     stop("Package 'ggplot2' is required for plotting.")
 
   by_k   <- x$by_k
-  d_plot <- x$df_haz[x$df_haz$at_risk == 1L, , drop = FALSE]
+  d_plot <- transform(x$df_haz, switch_prob = ifelse(at_risk, switch_prob, 0))
 
   if (type == "boxplot") {
     p <- ggplot2::ggplot() +

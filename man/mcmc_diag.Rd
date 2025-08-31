@@ -22,7 +22,7 @@ mcmc_diagnosis(
 
 \method{summary}{mcmc_diag}(object, ...)
 
-\method{plot}{mcmc_diag}(x, pars = NULL, ...)
+\method{plot}{mcmc_diag}(x, pars = NULL, use_pretty = TRUE, ...)
 }
 \arguments{
 \item{fit_out}{Output list from \code{fit_causal_recur()}, containing \code{stan_fit}

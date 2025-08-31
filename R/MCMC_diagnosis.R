@@ -172,7 +172,13 @@ mcmc_diagnosis <- function(fit_out,
     }
   }
 
-  out <- list(stats = df_stats, plots = plots)
+  pretty_map <- setNames(vapply(use_pars, .title_pretty, character(1)), use_pars)
+
+  out <- list(
+    stats = df_stats,
+    plots = plots,
+    pretty_map = pretty_map
+  )
   class(out) <- "mcmc_diag"
   invisible(out)
 }
@@ -208,15 +214,22 @@ summary.mcmc_diag <- function(object, ...) {
 #' @param ... Additional arguments (ignored).
 #' @export
 
-plot.mcmc_diag <- function(x, pars = NULL, ...) {
+plot.mcmc_diag <- function(x, pars = NULL, use_pretty = TRUE, ...) {
   plots <- x$plots
   if (!is.null(pars)) {
-    plots <- plots[intersect(names(plots), pars)]
-  }
-  if (length(plots) == 0) {
-    warning("No traceplots to display for the specified parameters.")
-    return(invisible(NULL))
+    keys <- names(plots)
+    sel  <- rep(FALSE, length(keys))
+    if (use_pretty && !is.null(x$pretty_map)) {
+      pretty <- unname(x$pretty_map[keys])
+      for (p in pars) {
+        sel <- sel | (keys %in% p) | grepl(p, pretty, ignore.case = TRUE)
+      }
+    } else {
+      sel <- keys %in% pars
+    }
+    plots <- plots[sel]
   }
   for (p in plots) print(p)
   invisible(plots)
 }
+
