@@ -1,0 +1,139 @@
+BayCauRETM
+================
+
+<!-- badges: start -->
+
+[![R-CMD-check](https://github.com/LnnnnYW/BayCauRETM/actions/workflows/coverage.yaml/badge.svg)](https://github.com/LnnnnYW/BayCauRETM/actions/workflows/coverage.yaml)
+[![Coverage
+Status](https://coveralls.io/repos/github/LnnnnYW/BayCauRETM/badge.svg)](https://coveralls.io/github/LnnnnYW/BayCauRETM)
+![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)
+<!-- badges: end -->
+
+**BayCauRETM** (Bayesian Causal Recurrent-Event and Terminal-Event
+Modeling)  
+provides a *fully Bayesian* workflow for **discrete-time causal
+inference**  
+with recurrent-event counts jointly modeled with a terminal event.
+
+- Canonical long-format preprocessing with automated lags  
+- Stan-based joint modeling (`fit_causal_recur()`) with gAR(1) priors  
+- Posterior *g*-computation for alternative treatment-start strategies  
+- Diagnostics: MCMC convergence, propensity-score, switching-hazard  
+- Publication-ready tables & plots
+
+## Installation
+
+``` r
+# Install development version from GitHub
+# install.packages("pak")
+pak::pak("LnnnnYW/BayCauRETM")
+
+# Or with devtools:
+# devtools::install_github("LnnnnYW/BayCauRETM")
+```
+
+## Dependencies
+
+The following R packages are required for `BayCauRETM`:
+
+- [rstan](https://cran.r-project.org/package=rstan)
+- [dplyr](https://cran.r-project.org/package=dplyr)
+- [ggplot2](https://cran.r-project.org/package=ggplot2)
+- [bayesplot](https://cran.r-project.org/package=bayesplot)
+- [stats](https://stat.ethz.ch/R-manual/R-devel/library/stats/html/00Index.html)
+  *(base package)*
+- [magrittr](https://cran.r-project.org/package=magrittr)
+- [rlang](https://cran.r-project.org/package=rlang)
+- [gt](https://cran.r-project.org/package=gt)
+- [knitr](https://cran.r-project.org/package=knitr)
+- [plotly](https://cran.r-project.org/package=plotly)
+- [tidyr](https://cran.r-project.org/package=tidyr)
+- [writexl](https://cran.r-project.org/package=writexl)
+
+These are listed in the `Imports` field of the `DESCRIPTION` file and
+will be installed automatically with the package.
+
+## Example
+
+``` r
+library(BayCauRETM)
+
+## 1. Simulate toy data: 4 subjects × 3 intervals
+set.seed(123)
+toy <- data.frame(
+  pat_id = rep(1:4, each = 3),
+  k_idx  = rep(1:3, 4),
+  Y_obs  = rpois(12, 1),
+  T_obs  = rbinom(12, 1, 0.3),
+  A      = rbinom(12, 1, 0.4)
+)
+
+## 2. Pre-process: add lags (Y_prev, T_prev) and fill missing intervals
+pre <- preprocess_data(toy, K = 3)
+
+## 3. Fit Bayesian joint model (tiny MCMC just for illustration)
+fit <- fit_causal_recur(
+  data       = pre$processed_df,
+  K          = 3,
+  formula_T  = T_obs ~ Y_prev + A + k_idx,
+  formula_Y  = Y_obs ~ Y_prev + A + k_idx,
+  prior      = list(
+                 eta_beta  = 0, sigma_beta  = 1, rho_beta   = 0.5,
+                 eta_gamma = 0, sigma_gamma = 1, rho_gamma  = 0.5),
+  num_chains = 1,
+  iter       = 200,      # increase for real analysis
+  verbose    = FALSE
+)
+
+## 4. MCMC convergence diagnostics
+diag <- mcmc_diagnosis(fit)
+print(diag)
+# plot(diag)
+
+## 5. Posterior g-computation: start at s = 1, 2, 3 vs never
+gout <- g_computation(fit, s_vec = 1:3, B = 30)
+print(gout)
+# plot(gout, ref_line = 0)
+
+## 6. Propensity-score diagnostics
+psd <- propensity_score_diagnostics(
+         data       = fit$data_preprocessed,
+         treat_col  = "A",
+         covariates = c("Y_prev", "k_idx"))
+# plot(psd, type = "histogram")
+
+## 7. Switching-hazard diagnostics
+sw <- switching_probability_summary(fit$data_preprocessed)
+# plot(sw)
+
+## 8. Merge posterior and g-computation summaries
+tbl <- result_summary_table(fit, gout, s_vec = 1:3, format = "kable")
+print(tbl)
+```
+
+## Documentation & Demos
+
+- Full demo: `inst/demo/demo_full.R`
+- Help pages for each function:  
+  `?preprocess_data`, `?fit_causal_recur`, `?g_computation`, etc.
+
+## Reporting Issues
+
+If you encounter bugs or have feature suggestions, please  
+open an [issue on
+GitHub](https://github.com/LnnnnYW/BayCauRETM/issues).  
+Pull requests are always welcome!
+
+## Citation
+
+If you use **BayCauRETM**, please cite:
+
+## Contact
+
+The corresponding package author are Yuqin Wang (email:
+<yuqin_wang@brown.edu>) and Arman Oganisian (email:
+<arman_oganisian@brown.edu>).
+
+> Tip: For reproducibility, knit this README from a `README.Rmd`
+> source  
+> using `devtools::build_readme()`.
