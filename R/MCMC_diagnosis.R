@@ -97,12 +97,18 @@ mcmc_diagnosis <- function(fit_out,
   stan_fit <- fit_out$stan_fit
 
   if (!("stan_fit" %in% names(fit_out)) || !inherits(fit_out$stan_fit, "stanfit"))
-    stop("input must contain a valid 'stan_fit' (rstan::stanfit object)")
+    stop("input must contain a valid 'stan_fit' rstan::stanfit object")
 
   stan_pars <- names(rstan::extract(stan_fit))
   use_pars  <- intersect(pars_to_check, stan_pars)
   if (length(use_pars) == 0)
     stop("None of the specified 'pars_to_check' exist in the fitted Stan object.")
+  #find out if any of the pars_to_check are not in the stan_pars
+  skipped_pars <- setdiff(pars_to_check, stan_pars)
+  if (length(skipped_pars) > 0) {
+    warning("The following 'pars_to_check' were not found in the fitted Stan object and will be skipped: ",
+            paste(skipped_pars, collapse = ", "))
+  }
 
   cat("----- MCMC Rhat & Effective Sample Size -----\n")
   sum_stats <- rstan::summary(stan_fit, pars = use_pars)$summary
