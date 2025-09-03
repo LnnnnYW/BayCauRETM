@@ -36,18 +36,17 @@ pak::pak("LnnnnYW/BayCauRETM")
 
 The following R packages are required for `BayCauRETM`:
 
+- [RcppEigen](https://cran.r-project.org/package=RcppEigen)
 - [rstan](https://cran.r-project.org/package=rstan)
+- [BH](https://cran.r-project.org/package=BH)
+- [tidyverse](https://cran.r-project.org/package=tidyverse)
 - [dplyr](https://cran.r-project.org/package=dplyr)
-- [ggplot2](https://cran.r-project.org/package=ggplot2)
 - [bayesplot](https://cran.r-project.org/package=bayesplot)
+- [ggplot2](https://cran.r-project.org/package=ggplot2)
 - [stats](https://stat.ethz.ch/R-manual/R-devel/library/stats/html/00Index.html)
-  *(base package)*
-- [magrittr](https://cran.r-project.org/package=magrittr)
-- [rlang](https://cran.r-project.org/package=rlang)
 - [gt](https://cran.r-project.org/package=gt)
 - [knitr](https://cran.r-project.org/package=knitr)
 - [plotly](https://cran.r-project.org/package=plotly)
-- [tidyr](https://cran.r-project.org/package=tidyr)
 - [writexl](https://cran.r-project.org/package=writexl)
 
 These are listed in the `Imports` field of the `DESCRIPTION` file and
