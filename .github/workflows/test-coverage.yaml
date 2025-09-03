@@ -2,7 +2,7 @@ name: test-coverage
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [main, master]
   pull_request:
 
 permissions: read-all
@@ -24,12 +24,11 @@ jobs:
           extra-packages: any::covr
           needs: coverage
 
-      - name: Run tests & generate lcov
+      - name: Run tests & upload to Coveralls
         run: |
-          Rscript -e 'cov <- covr::package_coverage(quiet = FALSE); print(cov); dir.create("coverage", showWarnings = FALSE); covr::lcov(cov, filename = "coverage/lcov.info")'
-
-      - name: Upload to Coveralls
-        uses: coverallsapp/github-action@v2
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          path-to-lcov: coverage/lcov.info
+          Rscript -e 'cov <- covr::package_coverage(quiet = FALSE); print(cov); covr::coveralls(coverage = cov)'
+        env:
+          # For public repos on GitHub Actions, this often works without a token,
+          # but the most reliable setup is to create COVERALLS_REPO_TOKEN in repo secrets.
+          COVERALLS_REPO_TOKEN: ${{ secrets.COVERALLS_REPO_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
