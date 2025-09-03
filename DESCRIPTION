@@ -13,8 +13,9 @@ Depends: R (>= 4.3)
 Encoding: UTF-8
 Imports:
     rstan,
-    tidyverse,
     BH,
+    tidyverse,
+    dplyr,
     ggplot2,
     bayesplot,
     stats,
