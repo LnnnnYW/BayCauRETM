@@ -1,23 +1,4 @@
-<<<<<<< HEAD
-#' MCMC convergence and positivity diagnostics
-#'
-#' @description
-#' Summarize MCMC convergence for a fitted model (R-hat and effective sample
-#' size), generate trace plots for selected parameters via
-#' `bayesplot::mcmc_trace()`, and optionally perform positivity diagnostics
-#' for treatment assignment.
-#'
-#' @param fit_out Output list from `fit_causal_recur()`, containing `stan_fit`
-#'   (an rstan `stanfit` object) and, if `positivity = TRUE`, `data_preprocessed`.
-#' @param pars_to_check Character vector of parameter-name patterns to diagnose
-#'   (patterns are passed to `bayesplot::mcmc_trace()`).
-#' @param save_plots Logical; if `TRUE`, save each trace plot as a PNG using `plot_prefix`.
-#' @param plot_prefix Filename prefix for saved plots (default `"traceplot_"`).
-#' @param positivity Logical; if `TRUE`, run an additional logistic-regression
-#'   propensity-score check (default `FALSE`).
-#' @param ps_covariates Character vector of column names used in the positivity
-#'   model (required when `positivity = TRUE`).
-=======
+
 #' MCMC convergence diagnostics
 #'
 #' @description
@@ -33,19 +14,11 @@
 #' @param save_plots Logical. Index of whether to save the output plot. If `TRUE`,
 #'   save each trace plot as a PNG using `plot_prefix`.
 #' @param plot_prefix Character scalar. Filename prefix for saved plots (default `"traceplot_"`).
->>>>>>> 759e44d2adaa77e0e2258aa398e3f620bf7ff1ce
 #'
 #' @return An object of class `mcmc_diag`, a list with:
 #'   * `stats` — data frame with `Parameter`, `n_eff`, and `Rhat`;
 #'   * `plots` — named list of ggplot objects for the trace plots.
 #'
-<<<<<<< HEAD
-#' @examples
-#' \dontrun{
-#' # diag <- mcmc_diagnosis(fit_out, pars_to_check = c("beta0","theta0"))
-#' # print(diag)
-#' # plot(diag, pars = "beta0")
-=======
 #' @details
 #' The function prints a table of R-hat and effective sample size and creates
 #' trace plots grouped by parameter blocks. Parameter facet labels are mapped to
@@ -67,7 +40,6 @@
 #' print(diag)
 #' plot(diag, pars = "T-model") # only the terminal-event block
 #' plot(diag, pars = c("Lag","treatment_effect_Y"))
->>>>>>> 759e44d2adaa77e0e2258aa398e3f620bf7ff1ce
 #' }
 #'
 #' @importFrom rstan summary
@@ -83,13 +55,7 @@
 mcmc_diagnosis <- function(fit_out,
                            pars_to_check = c("beta0", "theta0", "beta1", "theta1", "thetaLag"),
                            save_plots     = FALSE,
-<<<<<<< HEAD
-                           plot_prefix    = "traceplot_",
-                           positivity     = FALSE,
-                           ps_covariates  = NULL) {
-=======
                            plot_prefix    = "traceplot_") {
->>>>>>> 759e44d2adaa77e0e2258aa398e3f620bf7ff1ce
 
   if (inherits(fit_out, "causal_recur_fit"))
     fit_out <- unclass(fit_out)
@@ -183,50 +149,6 @@ mcmc_diagnosis <- function(fit_out,
   plots <- Filter(Negate(is.null), plots)
   names(plots) <- use_pars[seq_along(plots)]
 
-<<<<<<< HEAD
-  # positivity diagnostics
-  if (positivity) {
-    if (is.null(fit_out$data_preprocessed)) {
-      warning("data_preprocessed not found in fit_out; cannot perform positivity diagnostics.")
-    } else {
-      cat("Positivity Diagnostics for Treatment A \n")
-
-      df <- fit_out$data_preprocessed
-
-      if (is.null(ps_covariates))
-        stop("positivity = TRUE but no 'ps_covariates' provided.")
-
-      missing <- setdiff(ps_covariates, names(df))
-      if (length(missing) > 0) {
-        stop("ps_covariates not found in data: ", paste(missing, collapse = ", "))
-      }
-
-      formula_A <- as.formula(paste("A ~", paste(ps_covariates, collapse = " + ")))
-      mod_ps <- stats::glm(formula_A, data = df, family = stats::binomial)
-      ps     <- stats::predict(mod_ps, type = "response")
-
-      cat(sprintf("Propensity score range: [%.3f, %.3f]\n", min(ps), max(ps)))
-      cat("Percentiles (1%, 5%, 95%, 99%):\n")
-      print(stats::quantile(ps, c(.01, .05, .95, .99)))
-      cat("\n")
-
-      p_ps <- ggplot2::ggplot(data.frame(ps = ps),
-                              ggplot2::aes(x = ps)) +
-        ggplot2::geom_histogram(bins = 30, boundary = 0) +
-        ggplot2::labs(
-          title = "Estimated Propensity Score Distribution for A",
-          x     = "P(A = 1 | history, covariates)",
-          y     = "Count"
-        ) +
-        ggplot2::theme(plot.title = ggplot2::element_text(hjust = .5))
-      print(p_ps)
-      if (save_plots)
-        ggplot2::ggsave(filename = paste0(plot_prefix, "ps_hist.png"), plot = p_ps)
-    }
-  }
-
-=======
->>>>>>> 759e44d2adaa77e0e2258aa398e3f620bf7ff1ce
   pretty_map <- setNames(vapply(use_pars, .title_pretty, character(1)), use_pars)
 
   out <- list(

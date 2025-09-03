@@ -1,19 +1,6 @@
 #' Posterior causal contrast delta(s, K+1) - interactive wrapper
 #'
 #' @description
-<<<<<<< HEAD
-#' Convenience wrapper that builds the static plot via
-#' [plot_posterior_causal_contrast_static()], optionally saves it to disk, and
-#' optionally converts it to an interactive Plotly object.
-#'
-#' @inheritParams plot_posterior_causal_contrast_static
-#' @param interactive Logical; if `TRUE`, return a Plotly object via
-#'   `plotly::ggplotly()`.
-#' @param save_file Optional file path to save the static ggplot (PNG/PDF, etc.).
-#' @param width,height,dpi Device settings used by `ggplot2::ggsave()` when saving.
-#'
-#' @return A ggplot or plotly object.
-=======
 #' Build the static plot via [plot_posterior_causal_contrast_static()], optionally
 #' save the static ggplot to disk, and optionally return an interactive Plotly object.
 #'
@@ -24,7 +11,6 @@
 #' @param width,height,dpi Device settings used by `ggplot2::ggsave()` when saving.
 #'
 #' @return A ggplot object when `interactive = FALSE`; otherwise a Plotly object.
->>>>>>> 759e44d2adaa77e0e2258aa398e3f620bf7ff1ce
 #'
 #' @examples
 #' \dontrun{
@@ -41,11 +27,6 @@
 #' @importFrom plotly ggplotly
 #' @export
 
-
-<<<<<<< HEAD
-
-=======
->>>>>>> 759e44d2adaa77e0e2258aa398e3f620bf7ff1ce
 plot_posterior_causal_contrast_interactive <- function(contrast_list,
                                                        s_vec        = NULL,
                                                        theme_fn     = ggplot2::theme_minimal,

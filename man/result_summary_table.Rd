@@ -11,12 +11,6 @@ result_summary_table(
   gcomp_out,
   pars_to_report = c("beta0", "beta1", "theta0", "theta1", "theta_lag"),
   s_vec = NULL,
-<<<<<<< HEAD
-  filter_pars = NULL,
-  sort_by = "Mean",
-  sort_desc = TRUE,
-=======
->>>>>>> 759e44d2adaa77e0e2258aa398e3f620bf7ff1ce
   format = "data.frame",
   export_file = NULL
 )
@@ -30,23 +24,6 @@ result_summary_table(
 
 \item{gcomp_out}{Output list from \code{\link[=g_computation]{g_computation()}}.}
 
-<<<<<<< HEAD
-\item{pars_to_report}{Character vector. Stan parameter names or simple patterns
-to keep.}
-
-\item{s_vec}{Integer vector of start intervals to keep. If \code{NULL}, all available
-intervals in \code{gcomp_out$delta} are used.}
-
-\item{filter_pars}{Optional filter for the parameter table. If a character
-vector, it is treated as a regex pattern applied to \code{Parameter}. Otherwise,
-a tidy-style expression is captured and evaluated via \code{dplyr::filter()}.}
-
-\item{sort_by}{Column name to sort the parameter table by.}
-
-\item{sort_desc}{Logical. Sort descending? Default \code{TRUE}.}
-
-\item{format}{One of \code{"data.frame"}, \code{"kable"}, or \code{"gt"}.}
-=======
 \item{pars_to_report}{Character vector of Stan parameter base names to report.
 Vector-valued parameters include all indices; only names present in the
 fitted object are used. Default:
@@ -59,7 +36,6 @@ silently ignored.}
 
 \item{format}{One of \code{"data.frame"}, \code{"kable"}, or \code{"gt"}. When the required
 package is unavailable, output falls back to \code{"data.frame"}.}
->>>>>>> 759e44d2adaa77e0e2258aa398e3f620bf7ff1ce
 
 \item{export_file}{Optional file path. If supplied, writes CSV/XLSX export.}
 
@@ -70,9 +46,6 @@ package is unavailable, output falls back to \code{"data.frame"}.}
 \item{object}{A \code{result_summary_table} object.}
 }
 \value{
-<<<<<<< HEAD
-A \code{result_summary_table} object; see \code{print()} for display.
-=======
 An object of class \code{result_summary_table} (also inheriting
 \code{"baycar_results"}) with components:
 \itemize{
@@ -84,7 +57,6 @@ for \code{delta(s, K+1)}, ordered by \code{s}.
 \item \code{export_file}: path(s) of the file(s) written when \code{export_file} is given,
 otherwise \code{NULL}.
 }
->>>>>>> 759e44d2adaa77e0e2258aa398e3f620bf7ff1ce
 
 \code{x}, invisibly.
 
@@ -93,9 +65,6 @@ otherwise \code{NULL}.
 \description{
 Extract posterior summaries from a Stan fit (\code{fit_out}) and causal contrasts
 \code{delta(s, K+1)} from a \code{gcomp_out}, then merge them into a single result that
-<<<<<<< HEAD
-can be printed, exported, or rendered with \strong{knitr}/\strong{gt}.
-=======
 can be printed, exported, or rendered with knitr/gt.
 }
 \details{
@@ -103,7 +72,6 @@ Posterior summaries are obtained from \code{rstan::summary()} for the requested
 parameter blocks. Credible intervals reported in the tables are the equal-tailed
 2.5\% and 97.5\% quantiles returned by Stan. If \code{s_vec} is supplied, the delta
 table is subset to those intervals (matching names like \code{"s=1"}, \code{"s=2"}, ...).
->>>>>>> 759e44d2adaa77e0e2258aa398e3f620bf7ff1ce
 }
 \section{Methods (by generic)}{
 \itemize{

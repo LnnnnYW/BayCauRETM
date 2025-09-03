@@ -26,15 +26,11 @@ a subject id, a time index, and a binary treatment indicator.}
 \item{covariates}{Optional character vector of column names in \code{df} to adjust for
 in the switching hazard model. Default \code{NULL} (unadjusted).}
 
-<<<<<<< HEAD
-\item{scale}{Character, \code{"mass"} (default) or \code{"hazard"}. See Details.}
-=======
 \item{scale}{Character string choosing the summary/plot scale.
 "mass" (default) shows the marginal probability of initiating at interval k
 (proportion of the cohort that starts at k); "hazard" shows the conditional
 probability of initiating at k among those still at risk at k. This choice
 affects both the returned summary and what \code{plot()} displays.}
->>>>>>> 759e44d2adaa77e0e2258aa398e3f620bf7ff1ce
 
 \item{x}{an object used to select a method.}
 
@@ -47,51 +43,6 @@ indicators with mean -+ 95\% Wald bars overlaid) or \code{"line"} (mean curve wi
 95\% ribbon). Defaults to \code{"boxplot"}.}
 }
 \value{
-<<<<<<< HEAD
-An object of class \code{switching_summary}, a list with components:
-\describe{
-\item{by_k}{A data frame with one row per interval containing:
-k_idx, n (at-risk sample size), mean_p (mean
-probability on the chosen scale), Wald 95\% limits lo95/hi95,
-and q25/q50/q75 for descriptive dispersion.}
-\item{by_id_k}{Per-subject indicators used for boxplots:
-for scale="hazard", it is the 0/1 indicator of switching at \(k\)
-among the at-risk set; for scale="mass", it is the 0/1 indicator of
-“first switch occurs at \(k\)”.}
-\item{id_col,time_col,treat_col,death_col}{Resolved column names.}
-\item{scale}{The scale used ("mass" or "hazard").}
-}
-}
-\description{
-Summarize how often subjects switch (initiate) treatment across follow-up
-intervals. Two complementary scales are supported:
-\itemize{
-\item mass (default): the marginal probability of initiating at interval \(k\),
-i.e., the proportion of the cohort that switches exactly at \(k\).
-\item hazard: the conditional probability of switching at interval \(k\)
-given the subject has not switched before \(k\).
-}
-
-In discrete time these satisfy \(m(k) = S(k-1)\,h(k)\), where \(h(k)\) is the
-hazard and \(S(k-1)\) the probability of not yet switched before \(k\).
-}
-\details{
-Let \eqn{A_{i,k}} denote subject \eqn{i}'s treatment at interval \eqn{k}.
-Define the at-risk indicator \eqn{R_{i,k}} to be 1 if the subject is alive
-at the start of interval \eqn{k} (and \eqn{k>1}), and 0 otherwise.
-The switching indicator is \eqn{E_{i,k} = I\{ A_{i,k} \ne A_{i,k-1} \}}.
-
-\itemize{
-\item \strong{Hazard scale}: \eqn{h(k)= \mathrm{E}\!\left[\,E_{i,k}\mid R_{i,k}=1\,\right]},
-estimated by the at-risk mean of \eqn{E_{i,k}} at each \eqn{k}.
-\item \strong{Mass scale}: Let \eqn{T} be the first switching interval; \eqn{m(k)=P(T=k)}.
-Numerically, \eqn{m(k)=S(k-1)\,h(k)} with
-\eqn{S(k-1)=\prod_{j<k}\{1-h(j)\}}.
-}
-The summary is purely descriptive (nonparametric) and does not fit a model; it is
-intended to contextualize causal estimates and reveal time-structured policies
-(e.g., delayed initiation or systematic stopping).
-=======
 An object of class \code{switching_summary} with components:
 \itemize{
 \item \code{df_haz}: row-level data with indicators for at-risk status and the
@@ -129,7 +80,6 @@ the predicted hazard) multiplied by the predicted hazard at k. The interval-leve
 table \code{by_k} reports a cohort-level mean and Wald-type 95\% limits based on a
 normal approximation with standard error \code{sd_ / sqrt(N_ids)}, along with
 selected quantiles of \code{switch_prob} for descriptive dispersion.
->>>>>>> 759e44d2adaa77e0e2258aa398e3f620bf7ff1ce
 }
 \section{Functions}{
 \itemize{

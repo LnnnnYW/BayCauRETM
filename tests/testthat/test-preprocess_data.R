@@ -1,6 +1,7 @@
 library(testthat)
 library(tidyverse)
-load("data.Rdata")
+
+load(testthat::test_path("data","data.RData"))
 
 df_clean <- df %>%
   filter(id %in% 1:100) %>%

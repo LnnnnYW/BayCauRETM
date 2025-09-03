@@ -5,13 +5,8 @@
 #' `delta(s, K+1)` against the treatment-start interval `s` for one or multiple
 #' scenarios produced by [g_computation()].
 #'
-<<<<<<< HEAD
-#' @param contrast_list Either a single `gcomp_out` object or a **named** list
-#'   of such objects to compare multiple scenarios side by side.
-=======
 #' @param contrast_list Either a single `gcomp_out` object or a named list of
 #'   such objects to compare multiple scenarios side by side.
->>>>>>> 759e44d2adaa77e0e2258aa398e3f620bf7ff1ce
 #' @param s_vec Integer vector of start intervals to include. If `NULL`
 #'   (default), all intervals contained in `$delta` are plotted.
 #' @param theme_fn A ggplot2 theme function (default `ggplot2::theme_minimal`).
@@ -38,11 +33,7 @@
 #' @importFrom dplyr bind_rows
 #' @importFrom ggplot2 ggplot aes geom_hline geom_ribbon geom_line geom_point
 #'   geom_text labs theme position_dodge theme_minimal
-<<<<<<< HEAD
-
-=======
 #' @export
->>>>>>> 759e44d2adaa77e0e2258aa398e3f620bf7ff1ce
 
 
 plot_posterior_causal_contrast_static <- function(contrast_list,

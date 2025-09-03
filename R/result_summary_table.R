@@ -3,28 +3,6 @@
 #' @description
 #' Extract posterior summaries from a Stan fit (`fit_out`) and causal contrasts
 #' `delta(s, K+1)` from a `gcomp_out`, then merge them into a single result that
-<<<<<<< HEAD
-#' can be printed, exported, or rendered with **knitr**/**gt**.
-#'
-#' @param fit_out Output list from [fit_causal_recur()].
-#' @param gcomp_out Output list from [g_computation()].
-#' @param pars_to_report Character vector. Stan parameter names or simple patterns
-#'   to keep.
-#' @param s_vec Integer vector of start intervals to keep. If `NULL`, all available
-#'   intervals in `gcomp_out$delta` are used.
-#' @param filter_pars Optional filter for the parameter table. If a character
-#'   vector, it is treated as a regex pattern applied to `Parameter`. Otherwise,
-#'   a tidy-style expression is captured and evaluated via `dplyr::filter()`.
-#' @param sort_by Column name to sort the parameter table by.
-#' @param sort_desc Logical. Sort descending? Default `TRUE`.
-#' @param format One of `"data.frame"`, `"kable"`, or `"gt"`.
-#' @param export_file Optional file path. If supplied, writes CSV/XLSX export.
-#'
-#' @return A `result_summary_table` object; see `print()` for display.
-#'
-#' @seealso [print.result_summary_table()], [g_computation()],
-#'   [plot_posterior_causal_contrast_static()].
-=======
 #' can be printed, exported, or rendered with knitr/gt.
 #'
 #' @param fit_out Output list from [fit_causal_recur()].
@@ -60,7 +38,6 @@
 #' 2.5% and 97.5% quantiles returned by Stan. If `s_vec` is supplied, the delta
 #' table is subset to those intervals (matching names like `"s=1"`, `"s=2"`, ...).
 #'
->>>>>>> 759e44d2adaa77e0e2258aa398e3f620bf7ff1ce
 #' @examples
 #' \dontrun{
 #' res <- result_summary_table(
@@ -71,30 +48,16 @@
 #' print(res)
 #' }
 #' @importFrom rstan summary
-<<<<<<< HEAD
-#' @importFrom dplyr filter arrange desc
-=======
->>>>>>> 759e44d2adaa77e0e2258aa398e3f620bf7ff1ce
 #' @importFrom knitr kable
 #' @importFrom gt gt tab_header
 #' @importFrom writexl write_xlsx
 #' @importFrom utils write.csv
-<<<<<<< HEAD
-#' @importFrom rlang enquo
-=======
->>>>>>> 759e44d2adaa77e0e2258aa398e3f620bf7ff1ce
 #' @export
 
 result_summary_table <- function(fit_out,
                                  gcomp_out,
                                  pars_to_report = c("beta0","beta1","theta0","theta1","theta_lag"),
                                  s_vec         = NULL,
-<<<<<<< HEAD
-                                 filter_pars   = NULL,
-                                 sort_by       = "Mean",
-                                 sort_desc     = TRUE,
-=======
->>>>>>> 759e44d2adaa77e0e2258aa398e3f620bf7ff1ce
                                  format        = "data.frame",
                                  export_file   = NULL) {
 
@@ -107,12 +70,6 @@ result_summary_table <- function(fit_out,
     stop("'pars_to_report' must be a non-empty character vector")
   if (!is.null(s_vec) && (!is.numeric(s_vec) || any(s_vec <= 0)))
     stop("'s_vec' must be NULL or a numeric vector of positive integers")
-  if (!is.null(filter_pars) && !is.character(filter_pars) && !rlang::is_quosure(filter_pars))
-    stop("'filter_pars' must be NULL, a character vector, or a dplyr filter expression")
-  if (!is.null(sort_by) && !is.character(sort_by))
-    stop("'sort_by' must be NULL or a character string")
-  if (!is.logical(sort_desc) || length(sort_desc) != 1)
-    stop("'sort_desc' must be a single logical value")
   if (!is.character(format) || length(format) != 1)
     stop("'format' must be a single character string")
   if (!is.null(export_file) && (!is.character(export_file) || length(export_file) != 1))
@@ -152,23 +109,6 @@ result_summary_table <- function(fit_out,
     }
   }
 
-<<<<<<< HEAD
-  if (!is.null(filter_pars) && nrow(df_par) > 0) {
-    if (is.character(filter_pars)) {
-      pat <- paste(filter_pars, collapse = "|")
-      df_par <- df_par[grepl(pat, df_par$Parameter), , drop = FALSE]
-    } else {
-      df_par <- dplyr::filter(df_par, !!rlang::enquo(filter_pars))
-    }
-  }
-
-  if (!is.null(sort_by) && sort_by %in% names(df_par) && nrow(df_par) > 0) {
-    df_par <- if (sort_desc) dplyr::arrange(df_par, dplyr::desc(.data[[sort_by]]))
-    else            dplyr::arrange(df_par, .data[[sort_by]])
-  }
-
-=======
->>>>>>> 759e44d2adaa77e0e2258aa398e3f620bf7ff1ce
   delta_list <- gcomp_out$delta
   if (!is.null(s_vec) && length(delta_list) > 0) {
     delta_list <- delta_list[paste0("s=", s_vec)]
@@ -289,13 +229,3 @@ summary.result_summary_table <- function(object, ...) {
   invisible(object)
 }
 
-<<<<<<< HEAD
-
-
-
-
-
-
-
-=======
->>>>>>> 759e44d2adaa77e0e2258aa398e3f620bf7ff1ce

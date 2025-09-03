@@ -7,36 +7,6 @@
 g_computation(Lmat = NULL, fit_out, s_vec, B = 50, cores = 1)
 }
 \arguments{
-<<<<<<< HEAD
-\item{Lmat}{Optional baseline design matrix for level/lag effects; if NULL,
-it is built from the first row per subject and the right-hand side of
-\code{fit_out$design_info$formula_T} (no intercept).}
-
-\item{fit_out}{Output list from \code{\link[=fit_causal_recur]{fit_causal_recur()}}.}
-
-\item{s_vec}{Integer vector of treatment-start intervals.}
-
-\item{B}{Integer. Number of Monte Carlo replicates per posterior draw (default 50).}
-
-\item{cores}{Integer. If > 1, simulate in parallel via \code{parallel::parLapply()}.}
-}
-\value{
-A \code{gcomp_out} list with two components:
-\code{R_mat} (rows = posterior draws, columns = strategies \verb{s = 1..K, K+1} for
-never treat) and \code{delta} (named list with draws and summaries of
-\code{Delta(s) = R(s) - R(K+1)}).
-}
-\description{
-Estimate average recurrent-event rates under different treatment-start times
-versus never treating, using teacher-style parameters from \code{\link[=fit_causal_recur]{fit_causal_recur()}}.
-}
-\details{
-For each posterior draw, the algorithm draws Dirichlet weights over subjects,
-simulates B replicated paths under each strategy using the teacher-style
-parameters (logistic death hazard; Poisson log-mean for recurrent counts with
-an optional lag term), averages subject-level rates with the Dirichlet weights,
-and stores the contrasts \code{Delta(s)}.
-=======
 \item{Lmat}{A numeric matrix of size (n_pat*P), where n_pat is the number of subjects
 in the fitted data and P is the number of shared non-lag covariates. It is a matrix
 of baseline covariates shared by the terminal (T) and recurrent (Y) models,
@@ -69,7 +39,6 @@ as the sum of recurrent counts divided by the number of intervals at risk.
 Rates are averaged across subjects with the Dirichlet weights to obtain
 \code{R(s)}. Contrasts \code{Delta(s)} are formed against never treat (s = K + 1).
 Credible intervals are the 2.5\% and 97.5\% quantiles of the posterior draws.
->>>>>>> 759e44d2adaa77e0e2258aa398e3f620bf7ff1ce
 }
 \examples{
 \donttest{

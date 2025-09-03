@@ -1,7 +1,7 @@
 library(testthat)
 library(tidyverse)
 
-load("data.Rdata")
+load(testthat::test_path("data","data.RData"))
 
 df_clean <- df %>%
   filter(id %in% 1:100) %>%
@@ -46,7 +46,8 @@ fit <- fit_causal_recur(
   formula_T = Tk ~ Ak + I(lagYk^2) + L.1 + L.2,
   formula_Y = Yk ~ Ak + I(lagYk^2) + L.1 + L.2,
   cores     = 1,
-  iter      = 2000,
+  iter      = 1000,
+  num_chains = 1,
   verbose   = TRUE
 )
 

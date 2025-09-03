@@ -17,10 +17,6 @@ Imports:
     ggplot2,
     bayesplot,
     stats,
-<<<<<<< HEAD
-    rlang,
-=======
->>>>>>> 759e44d2adaa77e0e2258aa398e3f620bf7ff1ce
     gt,
     knitr,
     plotly,

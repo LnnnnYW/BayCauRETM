@@ -1,30 +1,6 @@
 #' Bayesian g-computation for recurrent-event rate contrasts
 #'
 #' @description
-<<<<<<< HEAD
-#' Estimate average recurrent-event rates under different treatment-start times
-#' versus never treating, using teacher-style parameters from [fit_causal_recur()].
-#'
-#' @param fit_out Output list from [fit_causal_recur()].
-#' @param s_vec Integer vector of treatment-start intervals.
-#' @param B Integer. Number of Monte Carlo replicates per posterior draw (default 50).
-#' @param Lmat Optional baseline design matrix for level/lag effects; if NULL,
-#'   it is built from the first row per subject and the right-hand side of
-#'   `fit_out$design_info$formula_T` (no intercept).
-#' @param cores Integer. If > 1, simulate in parallel via `parallel::parLapply()`.
-#'
-#' @return A `gcomp_out` list with two components:
-#'   `R_mat` (rows = posterior draws, columns = strategies `s = 1..K, K+1` for
-#'   never treat) and `delta` (named list with draws and summaries of
-#'   `Delta(s) = R(s) - R(K+1)`).
-#'
-#' @details
-#' For each posterior draw, the algorithm draws Dirichlet weights over subjects,
-#' simulates B replicated paths under each strategy using the teacher-style
-#' parameters (logistic death hazard; Poisson log-mean for recurrent counts with
-#' an optional lag term), averages subject-level rates with the Dirichlet weights,
-#' and stores the contrasts `Delta(s)`.
-=======
 #' Estimate posterior contrasts of average recurrent-event rates under switching
 #' strategies that start treatment at selected intervals, compared against never
 #' treating. Posterior draws are taken from [fit_causal_recur()], and simulation
@@ -52,7 +28,6 @@
 #' Rates are averaged across subjects with the Dirichlet weights to obtain
 #' `R(s)`. Contrasts `Delta(s)` are formed against never treat (s = K + 1).
 #' Credible intervals are the 2.5% and 97.5% quantiles of the posterior draws.
->>>>>>> 759e44d2adaa77e0e2258aa398e3f620bf7ff1ce
 #'
 #' @examples
 #' \donttest{

@@ -20,13 +20,8 @@ plot_posterior_causal_contrast_interactive(
 )
 }
 \arguments{
-<<<<<<< HEAD
-\item{contrast_list}{Either a single \code{gcomp_out} object or a \strong{named} list
-of such objects to compare multiple scenarios side by side.}
-=======
 \item{contrast_list}{Either a single \code{gcomp_out} object or a named list of
 such objects to compare multiple scenarios side by side.}
->>>>>>> 759e44d2adaa77e0e2258aa398e3f620bf7ff1ce
 
 \item{s_vec}{Integer vector of start intervals to include. If \code{NULL}
 (default), all intervals contained in \verb{$delta} are plotted.}
@@ -40,13 +35,8 @@ such objects to compare multiple scenarios side by side.}
 \item{ref_line}{Numeric or \code{NULL}; if numeric, draws a horizontal dashed
 line at that y-value (typical use \code{ref_line = 0}).}
 
-<<<<<<< HEAD
-\item{interactive}{Logical; if \code{TRUE}, return a Plotly object via
-\code{plotly::ggplotly()}.}
-=======
 \item{interactive}{Logical. If TRUE, convert the ggplot to a Plotly object with
 \code{plotly::ggplotly()} and return it.}
->>>>>>> 759e44d2adaa77e0e2258aa398e3f620bf7ff1ce
 
 \item{save_file}{Optional file path to save the static ggplot (PNG/PDF, etc.).}
 
@@ -56,20 +46,11 @@ line at that y-value (typical use \code{ref_line = 0}).}
 helpers (e.g., \code{line_size}, \code{ribbon_alpha}, \code{show_points}, \code{label_points}).}
 }
 \value{
-<<<<<<< HEAD
-A ggplot or plotly object.
-}
-\description{
-Convenience wrapper that builds the static plot via
-\code{\link[=plot_posterior_causal_contrast_static]{plot_posterior_causal_contrast_static()}}, optionally saves it to disk, and
-optionally converts it to an interactive Plotly object.
-=======
 A ggplot object when \code{interactive = FALSE}; otherwise a Plotly object.
 }
 \description{
 Build the static plot via \code{\link[=plot_posterior_causal_contrast_static]{plot_posterior_causal_contrast_static()}}, optionally
 save the static ggplot to disk, and optionally return an interactive Plotly object.
->>>>>>> 759e44d2adaa77e0e2258aa398e3f620bf7ff1ce
 }
 \examples{
 \dontrun{
