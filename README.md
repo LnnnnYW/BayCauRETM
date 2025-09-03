@@ -53,69 +53,12 @@ The following R packages are required for `BayCauRETM`:
 These are listed in the `Imports` field of the `DESCRIPTION` file and
 will be installed automatically with the package.
 
-## Example
+## Documentation and Example
 
-``` r
-library(BayCauRETM)
+The [paper](https://academic.oup.com/biometrics/article/80/4/ujae145/7914699) associated with this package contains the statistical details of the model as well as a detailed walk-through demonstration. 
 
-## 1. Simulate toy data: 4 subjects × 3 intervals
-set.seed(123)
-toy <- data.frame(
-  pat_id = rep(1:4, each = 3),
-  k_idx  = rep(1:3, 4),
-  Y_obs  = rpois(12, 1),
-  T_obs  = rbinom(12, 1, 0.3),
-  A      = rbinom(12, 1, 0.4)
-)
+The code for demostration in the paper is available in the folder [inst/demo_code](https://github.com/LnnnnYW/BayCauRETM/tree/master/inst/demo_code).
 
-## 2. Pre-process: add lags (Y_prev, T_prev) and fill missing intervals
-pre <- preprocess_data(toy, K = 3)
-
-## 3. Fit Bayesian joint model (tiny MCMC just for illustration)
-fit <- fit_causal_recur(
-  data       = pre$processed_df,
-  K          = 3,
-  formula_T  = T_obs ~ Y_prev + A + k_idx,
-  formula_Y  = Y_obs ~ Y_prev + A + k_idx,
-  prior      = list(
-                 eta_beta  = 0, sigma_beta  = 1, rho_beta   = 0.5,
-                 eta_gamma = 0, sigma_gamma = 1, rho_gamma  = 0.5),
-  num_chains = 1,
-  iter       = 200,      # increase for real analysis
-  verbose    = FALSE
-)
-
-## 4. MCMC convergence diagnostics
-diag <- mcmc_diagnosis(fit)
-print(diag)
-# plot(diag)
-
-## 5. Posterior g-computation: start at s = 1, 2, 3 vs never
-gout <- g_computation(fit, s_vec = 1:3, B = 30)
-print(gout)
-# plot(gout, ref_line = 0)
-
-## 6. Propensity-score diagnostics
-psd <- propensity_score_diagnostics(
-         data       = fit$data_preprocessed,
-         treat_col  = "A",
-         covariates = c("Y_prev", "k_idx"))
-# plot(psd, type = "histogram")
-
-## 7. Switching-hazard diagnostics
-sw <- switching_probability_summary(fit$data_preprocessed)
-# plot(sw)
-
-## 8. Merge posterior and g-computation summaries
-tbl <- result_summary_table(fit, gout, s_vec = 1:3, format = "kable")
-print(tbl)
-```
-
-## Documentation & Demos
-
-- Full demo: `inst/demo/demo_full.R`
-- Help pages for each function:  
-  `?preprocess_data`, `?fit_causal_recur`, `?g_computation`, etc.
 
 ## Reporting Issues
 
