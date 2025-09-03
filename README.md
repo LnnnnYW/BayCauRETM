@@ -72,9 +72,10 @@ If you use **BayCauRETM**, please cite:
 
 ## Contact
 
-The corresponding package author are Yuqin Wang (email:
-<yuqin_wang@brown.edu>) and Arman Oganisian (email:
-<arman_oganisian@brown.edu>).
+The corresponding package author are
+Yuqin Wang (email: <yuqin_wang@brown.edu>)
+Keming Zhang (email: <keming_zhang@brown.edu>
+and Arman Oganisian (email: <arman_oganisian@brown.edu>).
 
 > Tip: For reproducibility, knit this README from a `README.Rmd`
 > source  
