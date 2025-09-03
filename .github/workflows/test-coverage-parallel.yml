@@ -1,13 +1,16 @@
-# Workflow derived from https://github.com/r-lib/actions/tree/v2/examples
-# Need help debugging build failures? Start at https://github.com/r-lib/actions#where-to-find-help
 on:
   push:
     branches: [main, master]
   pull_request:
 
-name: test-coverage.yaml
+name: test-coverage
 
-permissions: read-all
+# replace this:
+# permissions: read-all
+# with explicit perms including OIDC:
+permissions:
+  contents: read
+  id-token: write   # <-- needed for Codecov OIDC
 
 jobs:
   test-coverage:
@@ -38,25 +41,12 @@ jobs:
           covr::to_cobertura(cov)
         shell: Rscript {0}
 
-      - uses: codecov/codecov-action@v5
+      - name: Upload coverage to Codecov (OIDC)
+        uses: codecov/codecov-action@v5
         with:
-          # Fail if error if not on PR, or if on PR and token is given
-          fail_ci_if_error: ${{ github.event_name != 'pull_request' || secrets.CODECOV_TOKEN }}
+          use_oidc: true          # <-- tell Codecov to authenticate via OIDC
           files: ./cobertura.xml
           plugins: noop
           disable_search: true
-          token: ${{ secrets.CODECOV_TOKEN }}
-
-      - name: Show testthat output
-        if: always()
-        run: |
-          ## --------------------------------------------------------------------
-          find '${{ runner.temp }}/package' -name 'testthat.Rout*' -exec cat '{}' \; || true
-        shell: bash
-
-      - name: Upload test results
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage-test-failures
-          path: ${{ runner.temp }}/package
+          fail_ci_if_error: ${{ github.event_name != 'pull_request' }}
+          # no token here
