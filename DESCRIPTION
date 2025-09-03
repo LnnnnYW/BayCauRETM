@@ -14,7 +14,7 @@ Encoding: UTF-8
 Imports:
     rstan,
     tidyverse,
-    dplyr,
+    BH,
     ggplot2,
     bayesplot,
     stats,
