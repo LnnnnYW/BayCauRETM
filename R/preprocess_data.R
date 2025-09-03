@@ -83,6 +83,10 @@ utils::globalVariables(c(
 preprocess_data <- function(df, K, lag_col = NULL, need_lag = FALSE) {
   stopifnot(is.data.frame(df))
   stopifnot(is.numeric(K), length(K) == 1, K >= 1)
+  #no NAs in the df
+  if (anyNA(df))
+    stop("df must not contain any missing values")
+
 
   req <- c("pat_id", "k_idx", "Y_obs", "T_obs", "A")
   if (any(miss <- !req %in% names(df)))

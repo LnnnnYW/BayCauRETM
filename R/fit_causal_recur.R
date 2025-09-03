@@ -116,6 +116,7 @@ fit_causal_recur <- function(
     lag_col = "lagYk"
 ) {
   stan_model_file <- system.file("stan", "causal_recur_model.rds", package = "BayCauRETM")
+  stan_model_file_stan <- system.file("stan", "causal_recur_model.stan", package = "BayCauRETM")
   if (!nzchar(stan_model_file) || !file.exists(stan_model_file))
     stop("Stan model file not found at: ", stan_model_file)
 
@@ -128,6 +129,20 @@ fit_causal_recur <- function(
       sigma_theta_lag = 0.5
     )
   }
+
+  #check input types
+  if (!is.data.frame(data)) stop("data must be a data.frame")
+  if (!(is.numeric(K) && length(K) == 1 && K >= 1 && K == round(K))) stop("K must be a positive integer")
+  if (!(is.character(id_col) && length(id_col) == 1)) stop("id_col must be a single character string")
+  if (!(is.character(time_col) && length(time_col) == 1)) stop("time_col must be a single character string")
+  if (!(is.character(treat_col) && length(treat_col) == 1)) stop("treat_col must be a single character string")
+  if (!inherits(formula_T, "formula")) stop("formula_T must be a formula")
+  if (!inherits(formula_Y, "formula")) stop("formula_Y must be a formula")
+  if (!(is.numeric(num_chains) && length(num_chains) == 1 && num_chains >= 1 && num_chains == round(num_chains))) stop("num_chains must be a positive integer")
+  if (!(is.numeric(iter) && length(iter) == 1 && iter == round(iter))) stop("iter must be a positive integer")
+  if (!(is.numeric(cores) && length(cores) == 1 && cores >= 1 && cores == round(cores))) stop("cores must be a positive integer")
+  if (!(is.logical(verbose) && length(verbose) == 1)) stop("verbose must be TRUE or FALSE")
+  if (!(is.null(lag_col) || (is.character(lag_col) && length(lag_col) == 1))) stop("lag_col must be NULL or a single character string")
 
   need_cols <- c(id_col, time_col, treat_col)
   if (any(miss <- !need_cols %in% names(data)))
@@ -264,6 +279,16 @@ fit_causal_recur <- function(
   stan_mod <- readRDS(stan_model_file)
   if (!inherits(stan_mod, "stanmodel"))
     stop("The RDS at ", stan_model_file, " is not a 'stanmodel' object.")
+  dso_ok <- isTRUE({
+    if (inherits(stan_mod, "stanmodel")) {
+      fn <- stan_mod@dso@dso_filename
+      !is.null(fn) && nzchar(fn) && file.exists(fn)
+    } else FALSE
+  })
+  if (!dso_ok) {
+    if (verbose) message("Re-compiling Stan model from: ", stan_model_file_stan)
+    stan_mod <- rstan::stan_model(stan_model_file_stan)
+  }
 
   if (verbose) message(sprintf("Sampling (%d chains * %d iter, cores=%d)...", num_chains, iter, cores))
   stan_fit <- rstan::sampling(
@@ -271,7 +296,8 @@ fit_causal_recur <- function(
     data   = stan_data,
     chains = num_chains, iter = iter,
     cores  = cores, seed = 1234,
-    control = control
+    control = control,
+    open_progress = FALSE
   )
 
   structure(

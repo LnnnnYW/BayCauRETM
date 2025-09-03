@@ -48,7 +48,17 @@ g_computation <- function(Lmat = NULL,
                           cores = 1) {
 
   if (!inherits(fit_out$stan_fit, "stanfit"))
-    stop("fit_out$stan_fit must be a 'stanfit' object")
+    stop("fit_out must contain be a 'stanfit' object")
+
+  #check input type
+  if (!is.matrix(Lmat) && !is.null(Lmat))
+    stop("Lmat must be a matrix or NULL")
+  if (!is.numeric(s_vec) || any(s_vec < 1) || any(s_vec != floor(s_vec)))
+    stop("s_vec must be a vector of positive integers")
+  if (!is.numeric(B) || length(B) != 1 || B < 1 || B != floor(B))
+    stop("B must be a single positive integer")
+  if (!is.numeric(cores) || length(cores) != 1 || cores < 1 || cores != floor(cores))
+    stop("cores must be a single positive integer")
 
   `%||%` <- function(x, y) if (is.null(x)) y else x
 

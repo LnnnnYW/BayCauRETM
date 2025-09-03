@@ -51,6 +51,26 @@ result_summary_table <- function(fit_out,
                                  format        = "data.frame",
                                  export_file   = NULL) {
 
+  #check input types
+  if (!inherits(fit_out$stan_fit, "stanfit"))
+    stop("fit_out must contain be a 'stanfit' object")
+  if (!is.list(gcomp_out) || is.null(gcomp_out$delta) || !is.list(gcomp_out$delta))
+    stop("gcomp_out must be the output of g_computation")
+  if (!is.character(pars_to_report) || length(pars_to_report) == 0)
+    stop("'pars_to_report' must be a non-empty character vector")
+  if (!is.null(s_vec) && (!is.numeric(s_vec) || any(s_vec <= 0)))
+    stop("'s_vec' must be NULL or a numeric vector of positive integers")
+  if (!is.null(filter_pars) && !is.character(filter_pars) && !rlang::is_quosure(filter_pars))
+    stop("'filter_pars' must be NULL, a character vector, or a dplyr filter expression")
+  if (!is.null(sort_by) && !is.character(sort_by))
+    stop("'sort_by' must be NULL or a character string")
+  if (!is.logical(sort_desc) || length(sort_desc) != 1)
+    stop("'sort_desc' must be a single logical value")
+  if (!is.character(format) || length(format) != 1)
+    stop("'format' must be a single character string")
+  if (!is.null(export_file) && (!is.character(export_file) || length(export_file) != 1))
+    stop("'export_file' must be NULL or a single character string")
+
   df_par <- data.frame(
     Parameter = character(0),
     Mean      = numeric(0),
