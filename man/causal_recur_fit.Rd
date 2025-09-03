@@ -37,6 +37,7 @@ fit_causal_recur(
 \method{plot}{causal_recur_fit}(x, ...)
 }
 \arguments{
+<<<<<<< HEAD
 \item{data}{A \strong{long-format} \code{data.frame} that contains the user-named
 identifier, time index, treatment, outcome, and any covariate columns.
 These names are supplied via \code{id_col}, \code{time_col}, \code{treat_col}, plus the
@@ -61,6 +62,30 @@ for time-varying/lagged predictors in the terminal sub-model.}
 \code{event_count ~ Y_prev + A + k_idx}. The \strong{right-hand side terms excluding
 the treatment column} are used to build a (possibly empty) design matrix
 for the recurrent sub-model (for \code{k_idx > 1} rows).}
+=======
+\item{data}{A long-format data.frame containing user-named identifier, time index,
+treatment, outcomes, and covariates. The column names for ID, time, and treatment
+are provided by \code{id_col}, \code{time_col}, and \code{treat_col}. The left-hand sides of
+\code{formula_T} and \code{formula_Y} give the terminal-event and recurrent-count variables.}
+
+\item{K}{Integer. Total number of discrete intervals in the study.}
+
+\item{id_col}{Character scalar.Column name for the subject identifier.}
+
+\item{time_col}{Character scalar. Name of the column that stores the discrete
+time index per subject. Values in that column should be integers 1..K.}
+
+\item{treat_col}{Character scalar. Column name for the binary treatment indicator (0/1).}
+
+\item{formula_T}{A formula for the terminal-event sub-model, for example
+\code{death_flag ~ lagYk + A + k_idx}. Terms on the right-hand side, excluding the
+treatment column, form the design matrix for the terminal model.}
+
+\item{formula_Y}{A formula for the recurrent-count sub-model, for example
+\code{event_count ~ lagYk + A + k_idx}. Terms on the right-hand side, excluding the
+treatment column, form the design matrices for the recurrent model (separately for
+baseline rows with \code{k_idx == 1} and follow-up rows with \code{k_idx > 1}).}
+>>>>>>> 759e44d2adaa77e0e2258aa398e3f620bf7ff1ce
 
 \item{prior}{Named list of gAR(1) hyperparameters. Supported elements:
 \code{eta_beta}, \code{sigma_beta}, \code{rho_beta}, \code{eta_gamma}, \code{sigma_gamma},
@@ -69,7 +94,11 @@ Missing entries fall back to internal defaults.}
 
 \item{num_chains}{Integer. Number of MCMC chains (default \code{4}).}
 
+<<<<<<< HEAD
 \item{iter}{Integer. Total iterations \emph{per} chain including warm-up
+=======
+\item{iter}{Integer. Total iterations per chain including warm-up
+>>>>>>> 759e44d2adaa77e0e2258aa398e3f620bf7ff1ce
 (default \code{2000}).}
 
 \item{control}{List passed to \code{rstan::sampling()} (e.g.,
@@ -78,6 +107,7 @@ Missing entries fall back to internal defaults.}
 \item{cores}{Integer. Number of CPU cores to use for sampling (passed to
 \code{rstan::sampling()}).}
 
+<<<<<<< HEAD
 \item{verbose}{Logical. Print progress messages (default \code{TRUE}).}
 
 \item{lag_col}{Character scalar or \code{NULL}. If \code{NULL}, a column named
@@ -85,6 +115,14 @@ Missing entries fall back to internal defaults.}
 is provided and that column is \strong{absent} in \code{data}, \code{preprocess_data()}
 will generate it as an integer indicator based on the subject-specific lag
 of \code{I(Y_obs > 0)}. If the column already exists, it is left unchanged.}
+=======
+\item{verbose}{Logical. Index of whether to print progress messages (default \code{TRUE}).}
+
+\item{lag_col}{Character scalar. Name of the lag indicator if lagged terms are used in either
+formula. If the formulas include this name but the column is absent in \code{data}, the function
+calls \code{preprocess_data()} to generate it within subject as an indicator based on
+the previous interval outcome; otherwise the input is left unchanged. Default "lagYk".}
+>>>>>>> 759e44d2adaa77e0e2258aa398e3f620bf7ff1ce
 
 \item{x}{A \code{causal_recur_fit} object.}
 
@@ -101,13 +139,19 @@ An object of class \code{causal_recur_fit} (list) with elements
 }
 \description{
 Fits a discrete-time Bayesian model for recurrent counts and a terminal
+<<<<<<< HEAD
 event using gAR(1) smoothing priors on time-varying intercepts. This
 implementation expects a \strong{pre-compiled} Stan model (\code{.rds}) and uses
 \code{rstan::sampling()} for MCMC.
+=======
+event using gAR(1) smoothing priors on time-varying intercepts. A pre-compiled
+Stan model (.rds) is loaded from the package and MCMC is run via \code{rstan::sampling()}.
+>>>>>>> 759e44d2adaa77e0e2258aa398e3f620bf7ff1ce
 }
 \details{
 Internally the function:
 \enumerate{
+<<<<<<< HEAD
 \item Copies \code{id_col}, \code{time_col}, and \code{treat_col} into the canonical names
 \code{pat_id}, \code{k_idx}, and \code{A}, and copies the outcomes named on the left-hand
 sides of \code{formula_T} / \code{formula_Y} into \code{T_obs} / \code{Y_obs};
@@ -124,6 +168,18 @@ unrelated to the lag terms are set to zero-column matrices (\code{P = 0});
 \item Loads the pre-compiled Stan model from \code{stan_model_file} and runs MCMC via
 \code{rstan::sampling()}, returning the fitted object along with the data,
 design information, prior settings, and the full list of inputs to Stan.
+=======
+\item Copies user-named columns into canonical names \code{pat_id}, \code{k_idx}, \code{A}, \code{T_obs}, \code{Y_obs}.
+\item Calls \code{preprocess_data()} to order rows by (\code{pat_id}, \code{k_idx}), remap subject IDs to
+consecutive integers, and, when lag terms are requested but missing, create the \code{lag_col}
+within subject. Rows after the first \code{T_obs == 1} per subject are removed (the death row
+itself is kept). The data are not padded to a full grid.
+\item Builds design matrices from the right-hand sides of \code{formula_T} and \code{formula_Y}, excluding
+the treatment column. Missing values in the model matrices are set to zero. The terminal
+model uses all rows; the recurrent model uses \code{k_idx == 1} for baseline and \code{k_idx > 1}
+for follow-up.
+\item Loads the pre-compiled Stan model from the package and runs MCMC via \code{rstan::sampling()}.
+>>>>>>> 759e44d2adaa77e0e2258aa398e3f620bf7ff1ce
 }
 }
 \section{Methods (by generic)}{
@@ -139,6 +195,7 @@ design information, prior settings, and the full list of inputs to Stan.
 df <- data.frame(
   sid         = rep(1:2, each = 2),
   period      = rep(1:2, 2),
+<<<<<<< HEAD
   event_count = rpois(4, 1),
   death_flag  = rbinom(4, 1, 0.2),
   trt_arm     = rbinom(4, 1, 0.5)
@@ -163,6 +220,30 @@ fit <- fit_causal_recur(
 print(fit)
 summary(fit)
 plot(fit)
+=======
+  event_count = c(0,1, 1,0),
+  death_flag  = c(0,0, 0,1),
+  trt_arm     = c(0,1, 0,1)
+)
+prior <- list(
+  eta_beta = 0, sigma_beta = 1, rho_beta = 0.5,
+  eta_gamma = 0, sigma_gamma = 1, rho_gamma = 0.5
+)
+\dontrun{
+fit <- fit_causal_recur(
+  data      = df, K = 2,
+  id_col    = "sid",
+  time_col  = "period",
+  treat_col = "trt_arm",
+  formula_T = death_flag  ~ lagYk + A,
+  formula_Y = event_count ~ lagYk + A,
+  prior     = prior,
+  num_chains = 1, iter = 200,
+  cores = 1, verbose = FALSE,
+  lag_col = "lagYk"
+)
+print(fit)
+>>>>>>> 759e44d2adaa77e0e2258aa398e3f620bf7ff1ce
 }
 
 }

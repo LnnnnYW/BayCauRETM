@@ -24,8 +24,11 @@ export(switching_probability_summary)
 importFrom(bayesplot,mcmc_trace)
 importFrom(dplyr,arrange)
 importFrom(dplyr,bind_rows)
+<<<<<<< HEAD
 importFrom(dplyr,desc)
 importFrom(dplyr,filter)
+=======
+>>>>>>> 759e44d2adaa77e0e2258aa398e3f620bf7ff1ce
 importFrom(dplyr,group_by)
 importFrom(dplyr,lag)
 importFrom(dplyr,mutate)
@@ -52,7 +55,10 @@ importFrom(gt,gt)
 importFrom(gt,tab_header)
 importFrom(knitr,kable)
 importFrom(plotly,ggplotly)
+<<<<<<< HEAD
 importFrom(rlang,enquo)
+=======
+>>>>>>> 759e44d2adaa77e0e2258aa398e3f620bf7ff1ce
 importFrom(rstan,extract)
 importFrom(rstan,sampling)
 importFrom(rstan,stan_model)

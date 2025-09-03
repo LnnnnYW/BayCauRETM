@@ -26,7 +26,15 @@ a subject id, a time index, and a binary treatment indicator.}
 \item{covariates}{Optional character vector of column names in \code{df} to adjust for
 in the switching hazard model. Default \code{NULL} (unadjusted).}
 
+<<<<<<< HEAD
 \item{scale}{Character, \code{"mass"} (default) or \code{"hazard"}. See Details.}
+=======
+\item{scale}{Character string choosing the summary/plot scale.
+"mass" (default) shows the marginal probability of initiating at interval k
+(proportion of the cohort that starts at k); "hazard" shows the conditional
+probability of initiating at k among those still at risk at k. This choice
+affects both the returned summary and what \code{plot()} displays.}
+>>>>>>> 759e44d2adaa77e0e2258aa398e3f620bf7ff1ce
 
 \item{x}{an object used to select a method.}
 
@@ -39,6 +47,7 @@ indicators with mean -+ 95\% Wald bars overlaid) or \code{"line"} (mean curve wi
 95\% ribbon). Defaults to \code{"boxplot"}.}
 }
 \value{
+<<<<<<< HEAD
 An object of class \code{switching_summary}, a list with components:
 \describe{
 \item{by_k}{A data frame with one row per interval containing:
@@ -82,6 +91,45 @@ Numerically, \eqn{m(k)=S(k-1)\,h(k)} with
 The summary is purely descriptive (nonparametric) and does not fit a model; it is
 intended to contextualize causal estimates and reveal time-structured policies
 (e.g., delayed initiation or systematic stopping).
+=======
+An object of class \code{switching_summary} with components:
+\itemize{
+\item \code{df_haz}: row-level data with indicators for at-risk status and the
+computed \code{switch_prob} on the chosen scale;
+\item \code{by_k}: interval-level summary with columns
+\code{k_idx}, \code{n_at_risk}, \code{mean}, \code{sd_}, \code{se}, \code{lo95}, \code{hi95}, \code{p25}, \code{p50}, \code{p75};
+here \code{mean} is computed as \code{sum(switch_prob, na.rm = TRUE) / N_ids};
+\item \code{model}: the fitted logistic regression used to estimate the initiation
+hazard on at-risk rows;
+\item \code{id_col}, \code{time_col}, \code{treat_col}, \code{death_col}: resolved column names;
+\item \code{scale}: the selected scale (\code{"mass"} or \code{"hazard"}).
+}
+}
+\description{
+Summarize how often subjects initiate treatment across follow-up intervals
+on two complementary scales:
+\itemize{
+\item mass: the cohort-level probability that initiation occurs at interval k
+(proportion of subjects whose first initiation is exactly at k);
+\item hazard: the cohort-level average of the per-subject initiation hazard at k
+among those at risk at k (initiation is defined as switching from 0 to 1).
+}
+}
+\details{
+The data are ordered by subject and time. Within each subject the function
+constructs the lagged treatment \code{A_prev}, an at-risk indicator that requires
+survival up to the start of interval k (if a terminal-event column is present)
+and no prior initiation (\code{A_prev == 0}), and an initiation indicator at k.
+A logistic regression is fit on the at-risk rows with response \code{init_k} and
+predictors \verb{factor(<time index column>)} (for example, \code{factor(k_idx)}) plus
+any \code{covariates}. Predicted hazards are assigned to at-risk rows. On the mass
+scale, the per-subject probability of first initiation at k is computed as the
+subject's survival up to k-1 (the product over prior at-risk rows of one minus
+the predicted hazard) multiplied by the predicted hazard at k. The interval-level
+table \code{by_k} reports a cohort-level mean and Wald-type 95\% limits based on a
+normal approximation with standard error \code{sd_ / sqrt(N_ids)}, along with
+selected quantiles of \code{switch_prob} for descriptive dispersion.
+>>>>>>> 759e44d2adaa77e0e2258aa398e3f620bf7ff1ce
 }
 \section{Functions}{
 \itemize{

@@ -1,6 +1,7 @@
 #' Compute switching-probability summary
 #'
 #' @description
+<<<<<<< HEAD
 #' Summarize how often subjects switch (initiate) treatment across follow-up
 #' intervals. Two complementary scales are supported:
 #'
@@ -11,11 +12,20 @@
 #'
 #' In discrete time these satisfy \(m(k) = S(k-1)\,h(k)\), where \(h(k)\) is the
 #' hazard and \(S(k-1)\) the probability of not yet switched before \(k\).
+=======
+#' Summarize how often subjects initiate treatment across follow-up intervals
+#' on two complementary scales:
+#' - mass: the cohort-level probability that initiation occurs at interval k
+#'   (proportion of subjects whose first initiation is exactly at k);
+#' - hazard: the cohort-level average of the per-subject initiation hazard at k
+#'   among those at risk at k (initiation is defined as switching from 0 to 1).
+>>>>>>> 759e44d2adaa77e0e2258aa398e3f620bf7ff1ce
 #'
 #' @param df A `data.frame` (e.g., from `preprocess_data()`) containing at least
 #'   a subject id, a time index, and a binary treatment indicator.
 #' @param covariates Optional character vector of column names in `df` to adjust for
 #'  in the switching hazard model. Default `NULL` (unadjusted).
+<<<<<<< HEAD
 #' @param scale Character, `"mass"` (default) or `"hazard"`. See Details.
 #' @inheritParams base::print
 #'
@@ -50,6 +60,40 @@
 #' intended to contextualize causal estimates and reveal time-structured policies
 #' (e.g., delayed initiation or systematic stopping).
 
+=======
+#' @param scale Character string choosing the summary/plot scale.
+#'   "mass" (default) shows the marginal probability of initiating at interval k
+#'   (proportion of the cohort that starts at k); "hazard" shows the conditional
+#'   probability of initiating at k among those still at risk at k. This choice
+#'   affects both the returned summary and what `plot()` displays.
+#' @inheritParams base::print
+#'
+#' @return An object of class `switching_summary` with components:
+#'   - `df_haz`: row-level data with indicators for at-risk status and the
+#'     computed `switch_prob` on the chosen scale;
+#'   - `by_k`: interval-level summary with columns
+#'     `k_idx`, `n_at_risk`, `mean`, `sd_`, `se`, `lo95`, `hi95`, `p25`, `p50`, `p75`;
+#'     here `mean` is computed as `sum(switch_prob, na.rm = TRUE) / N_ids`;
+#'   - `model`: the fitted logistic regression used to estimate the initiation
+#'     hazard on at-risk rows;
+#'   - `id_col`, `time_col`, `treat_col`, `death_col`: resolved column names;
+#'   - `scale`: the selected scale (`"mass"` or `"hazard"`).
+#'
+#' @details
+#' The data are ordered by subject and time. Within each subject the function
+#' constructs the lagged treatment `A_prev`, an at-risk indicator that requires
+#' survival up to the start of interval k (if a terminal-event column is present)
+#' and no prior initiation (`A_prev == 0`), and an initiation indicator at k.
+#' A logistic regression is fit on the at-risk rows with response `init_k` and
+#' predictors `factor(<time index column>)` (for example, `factor(k_idx)`) plus
+#' any `covariates`. Predicted hazards are assigned to at-risk rows. On the mass
+#' scale, the per-subject probability of first initiation at k is computed as the
+#' subject's survival up to k-1 (the product over prior at-risk rows of one minus
+#' the predicted hazard) multiplied by the predicted hazard at k. The interval-level
+#' table `by_k` reports a cohort-level mean and Wald-type 95% limits based on a
+#' normal approximation with standard error `sd_ / sqrt(N_ids)`, along with
+#' selected quantiles of `switch_prob` for descriptive dispersion.
+>>>>>>> 759e44d2adaa77e0e2258aa398e3f620bf7ff1ce
 #'
 #' @examples
 #' \dontrun{

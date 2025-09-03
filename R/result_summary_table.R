@@ -3,6 +3,7 @@
 #' @description
 #' Extract posterior summaries from a Stan fit (`fit_out`) and causal contrasts
 #' `delta(s, K+1)` from a `gcomp_out`, then merge them into a single result that
+<<<<<<< HEAD
 #' can be printed, exported, or rendered with **knitr**/**gt**.
 #'
 #' @param fit_out Output list from [fit_causal_recur()].
@@ -23,6 +24,43 @@
 #'
 #' @seealso [print.result_summary_table()], [g_computation()],
 #'   [plot_posterior_causal_contrast_static()].
+=======
+#' can be printed, exported, or rendered with knitr/gt.
+#'
+#' @param fit_out Output list from [fit_causal_recur()].
+#' @param gcomp_out Output list from [g_computation()].
+#' @param pars_to_report Character vector of Stan parameter base names to report.
+#'   Vector-valued parameters include all indices; only names present in the
+#'   fitted object are used. Default:
+#'   `c("beta0", "beta1", "theta0", "theta1", "theta_lag")`.
+#' @param s_vec Integer vector selecting which treatment-start intervals s
+#'   (discrete times 1..K) to report, e.g. c(1, 3, 5). If NULL, all s values
+#'   available in gcomp_out$delta are used; any values not present there are
+#'   silently ignored.
+#' @param format One of `"data.frame"`, `"kable"`, or `"gt"`. When the required
+#'   package is unavailable, output falls back to `"data.frame"`.
+#' @param export_file Optional file path. If supplied, writes CSV/XLSX export.
+#'
+#' @return An object of class `result_summary_table` (also inheriting
+#'   `"baycar_results"`) with components:
+#'   - `param_summary`: data frame with posterior summaries (`Parameter`, `Mean`,
+#'     `2.5%`, `97.5%`, `Rhat`, `n_eff`, `MCSE`, `CI_width`). Parameter names are
+#'     mapped to user-friendly labels when available.
+#'   - `delta_summary`: data frame with `s`, `Mean`, `2.5%`, `97.5%`, `CI_width`
+#'     for `delta(s, K+1)`, ordered by `s`.
+#'   - `export_file`: path(s) of the file(s) written when `export_file` is given,
+#'     otherwise `NULL`.
+#'
+#' @seealso [print.result_summary_table()], [g_computation()],
+#'   [plot_posterior_causal_contrast_static()].
+#'
+#' @details
+#' Posterior summaries are obtained from `rstan::summary()` for the requested
+#' parameter blocks. Credible intervals reported in the tables are the equal-tailed
+#' 2.5% and 97.5% quantiles returned by Stan. If `s_vec` is supplied, the delta
+#' table is subset to those intervals (matching names like `"s=1"`, `"s=2"`, ...).
+#'
+>>>>>>> 759e44d2adaa77e0e2258aa398e3f620bf7ff1ce
 #' @examples
 #' \dontrun{
 #' res <- result_summary_table(
@@ -33,21 +71,30 @@
 #' print(res)
 #' }
 #' @importFrom rstan summary
+<<<<<<< HEAD
 #' @importFrom dplyr filter arrange desc
+=======
+>>>>>>> 759e44d2adaa77e0e2258aa398e3f620bf7ff1ce
 #' @importFrom knitr kable
 #' @importFrom gt gt tab_header
 #' @importFrom writexl write_xlsx
 #' @importFrom utils write.csv
+<<<<<<< HEAD
 #' @importFrom rlang enquo
+=======
+>>>>>>> 759e44d2adaa77e0e2258aa398e3f620bf7ff1ce
 #' @export
 
 result_summary_table <- function(fit_out,
                                  gcomp_out,
                                  pars_to_report = c("beta0","beta1","theta0","theta1","theta_lag"),
                                  s_vec         = NULL,
+<<<<<<< HEAD
                                  filter_pars   = NULL,
                                  sort_by       = "Mean",
                                  sort_desc     = TRUE,
+=======
+>>>>>>> 759e44d2adaa77e0e2258aa398e3f620bf7ff1ce
                                  format        = "data.frame",
                                  export_file   = NULL) {
 
@@ -85,6 +132,7 @@ result_summary_table <- function(fit_out,
     }
   }
 
+<<<<<<< HEAD
   if (!is.null(filter_pars) && nrow(df_par) > 0) {
     if (is.character(filter_pars)) {
       pat <- paste(filter_pars, collapse = "|")
@@ -99,6 +147,8 @@ result_summary_table <- function(fit_out,
     else            dplyr::arrange(df_par, .data[[sort_by]])
   }
 
+=======
+>>>>>>> 759e44d2adaa77e0e2258aa398e3f620bf7ff1ce
   delta_list <- gcomp_out$delta
   if (!is.null(s_vec) && length(delta_list) > 0) {
     delta_list <- delta_list[paste0("s=", s_vec)]
@@ -219,6 +269,7 @@ summary.result_summary_table <- function(object, ...) {
   invisible(object)
 }
 
+<<<<<<< HEAD
 
 
 
@@ -226,3 +277,5 @@ summary.result_summary_table <- function(object, ...) {
 
 
 
+=======
+>>>>>>> 759e44d2adaa77e0e2258aa398e3f620bf7ff1ce

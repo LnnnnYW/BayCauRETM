@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 #' MCMC convergence and positivity diagnostics
 #'
 #' @description
@@ -16,16 +17,57 @@
 #'   propensity-score check (default `FALSE`).
 #' @param ps_covariates Character vector of column names used in the positivity
 #'   model (required when `positivity = TRUE`).
+=======
+#' MCMC convergence diagnostics
+#'
+#' @description
+#' Summarize MCMC convergence for a fitted model (R-hat and effective sample
+#' size), generate trace plots for selected parameters via `bayesplot::mcmc_trace()`.
+#'
+#' @param fit_out List returned by `fit_causal_recur()`. Must contain `stan_fit`
+#'   (an rstan `stanfit` object). When `positivity = TRUE`, `fit_out$data_preprocessed`
+#'   is also required.
+#' @param pars_to_check Character vector of Stan parameter base names to diagnose.
+#'   Only names present in the fitted object are used. Default:
+#'   `c("beta0", "theta0", "beta1", "theta1", "thetaLag")`.
+#' @param save_plots Logical. Index of whether to save the output plot. If `TRUE`,
+#'   save each trace plot as a PNG using `plot_prefix`.
+#' @param plot_prefix Character scalar. Filename prefix for saved plots (default `"traceplot_"`).
+>>>>>>> 759e44d2adaa77e0e2258aa398e3f620bf7ff1ce
 #'
 #' @return An object of class `mcmc_diag`, a list with:
 #'   * `stats` — data frame with `Parameter`, `n_eff`, and `Rhat`;
 #'   * `plots` — named list of ggplot objects for the trace plots.
 #'
+<<<<<<< HEAD
 #' @examples
 #' \dontrun{
 #' # diag <- mcmc_diagnosis(fit_out, pars_to_check = c("beta0","theta0"))
 #' # print(diag)
 #' # plot(diag, pars = "beta0")
+=======
+#' @details
+#' The function prints a table of R-hat and effective sample size and creates
+#' trace plots grouped by parameter blocks. Parameter facet labels are mapped to
+#' user-friendly names. If `save_plots = TRUE`, trace plots are written to files
+#' using `plot_prefix`.
+#' pars_to_check for plotting:
+#' You can pass either raw Stan base names (e.g., "beta0", "thetaLag") or the
+#' aliases below; matching is case-insensitive and allows partial keywords.
+#' Aliases:
+#' - "T-model": terminal-event block (beta0[]; baseline hazard, covariates, lag terms, time-baseline).
+#' - "Y-model": recurrent-event block (theta0[]; baseline rate, covariates, lag terms, time-baseline).
+#' - "treatment_effect_T": treatment effect in the terminal model (beta1).
+#' - "treatment_effect_Y": treatment effect in the recurrent model (theta1).
+#' - "Lag": lag-kernel terms (thetaLag), when present.
+#'
+#' @examples
+#' \dontrun{
+#' diag <- mcmc_diagnosis(fit_out, pars_to_check = c("beta0","theta0"))
+#' print(diag)
+#' plot(diag, pars = "T-model") # only the terminal-event block
+#' plot(diag, pars = c("Lag","treatment_effect_Y"))
+>>>>>>> 759e44d2adaa77e0e2258aa398e3f620bf7ff1ce
 #' }
 #'
 #' @importFrom rstan summary
@@ -41,9 +83,13 @@
 mcmc_diagnosis <- function(fit_out,
                            pars_to_check = c("beta0", "theta0", "beta1", "theta1", "thetaLag"),
                            save_plots     = FALSE,
+<<<<<<< HEAD
                            plot_prefix    = "traceplot_",
                            positivity     = FALSE,
                            ps_covariates  = NULL) {
+=======
+                           plot_prefix    = "traceplot_") {
+>>>>>>> 759e44d2adaa77e0e2258aa398e3f620bf7ff1ce
 
   if (inherits(fit_out, "causal_recur_fit"))
     fit_out <- unclass(fit_out)
@@ -131,6 +177,7 @@ mcmc_diagnosis <- function(fit_out,
   plots <- Filter(Negate(is.null), plots)
   names(plots) <- use_pars[seq_along(plots)]
 
+<<<<<<< HEAD
   # positivity diagnostics
   if (positivity) {
     if (is.null(fit_out$data_preprocessed)) {
@@ -172,6 +219,8 @@ mcmc_diagnosis <- function(fit_out,
     }
   }
 
+=======
+>>>>>>> 759e44d2adaa77e0e2258aa398e3f620bf7ff1ce
   pretty_map <- setNames(vapply(use_pars, .title_pretty, character(1)), use_pars)
 
   out <- list(

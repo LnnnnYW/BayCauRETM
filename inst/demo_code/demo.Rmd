@@ -112,7 +112,11 @@ Specifically, "T-model" refers to the baseline hazard and covariate effects in t
 ```{r}
 # MCMC Diagnosis
 rstan::check_hmc_diagnostics(fit$stan_fit)
+<<<<<<< HEAD
 diag <- mcmc_diagnosis(fit)
+=======
+diag <- mcmc_diagnosis(fit,positivity     = FALSE)
+>>>>>>> 759e44d2adaa77e0e2258aa398e3f620bf7ff1ce
 plot(diag, pars = "T-model") 
 ```
 

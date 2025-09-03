@@ -7,6 +7,7 @@
 g_computation(Lmat = NULL, fit_out, s_vec, B = 50, cores = 1)
 }
 \arguments{
+<<<<<<< HEAD
 \item{Lmat}{Optional baseline design matrix for level/lag effects; if NULL,
 it is built from the first row per subject and the right-hand side of
 \code{fit_out$design_info$formula_T} (no intercept).}
@@ -35,6 +36,40 @@ simulates B replicated paths under each strategy using the teacher-style
 parameters (logistic death hazard; Poisson log-mean for recurrent counts with
 an optional lag term), averages subject-level rates with the Dirichlet weights,
 and stores the contrasts \code{Delta(s)}.
+=======
+\item{Lmat}{A numeric matrix of size (n_pat*P), where n_pat is the number of subjects
+in the fitted data and P is the number of shared non-lag covariates. It is a matrix
+of baseline covariates shared by the terminal (T) and recurrent (Y) models,
+excluding any lag terms.}
+
+\item{fit_out}{Output list from \code{\link[=fit_causal_recur]{fit_causal_recur()}}.}
+
+\item{s_vec}{Integer vector of treatment-start intervals (values should be
+in 1..K).}
+
+\item{B}{Integer. Number of Monte Carlo replicates per posterior draw (default 50).}
+
+\item{cores}{Integer scalar. The number of CPU workers used for the g-computation
+simulations, default is 1. If greater than 1, posterior simulations are
+evaluated in parallel via \code{parallel::parLapply()}.}
+}
+\description{
+Estimate posterior contrasts of average recurrent-event rates under switching
+strategies that start treatment at selected intervals, compared against never
+treating. Posterior draws are taken from \code{\link[=fit_causal_recur]{fit_causal_recur()}}, and simulation
+uses the terminal-event model with logistic hazard and the recurrent-count model
+with log Poisson mean. Optional lag terms in either model are included when
+present in the fitted object.
+}
+\details{
+For each posterior draw m, the algorithm samples Dirichlet weights over
+subjects (Bayesian bootstrap), simulates B replicated paths under each
+switching rule A_k = 1(k >= s), and computes a subject-specific average rate
+as the sum of recurrent counts divided by the number of intervals at risk.
+Rates are averaged across subjects with the Dirichlet weights to obtain
+\code{R(s)}. Contrasts \code{Delta(s)} are formed against never treat (s = K + 1).
+Credible intervals are the 2.5\% and 97.5\% quantiles of the posterior draws.
+>>>>>>> 759e44d2adaa77e0e2258aa398e3f620bf7ff1ce
 }
 \examples{
 \donttest{

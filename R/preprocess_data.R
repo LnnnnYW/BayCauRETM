@@ -3,7 +3,12 @@ utils::globalVariables(c(
   "k_idx", "pat_id", "T_obs",
   "Y_obs", "T_prev", "n", "hazard", "surv_prob",
   "switch_prob", ".data", "scenario", "lower", "upper", "lagY_bin",
+<<<<<<< HEAD
   "p25", "p75"
+=======
+  "p25", "p75", "alive_to_km1", "A_prev", "at_risk", "one_minus_h", "S_km1",
+  "sd_", "se", "lo95", "hi95"
+>>>>>>> 759e44d2adaa77e0e2258aa398e3f620bf7ff1ce
 ))
 
 `%||%` <- function(x, y) if (is.null(x)) y else x
@@ -20,6 +25,7 @@ utils::globalVariables(c(
 
 #' Preprocess Long-Format Data (ordering, ID remapping, optional lag creation)
 #'
+<<<<<<< HEAD
 #' Prepares a long-format dataset that already follows the standard column
 #' names for downstream discrete-time causal modeling. This lightweight
 #' preprocessor currently performs ordering, subject-ID normalization, basic
@@ -74,6 +80,58 @@ utils::globalVariables(c(
 #' head(out$processed_df)
 #' table(out$processed_df$lagY_bin)
 #' }
+=======
+#' Prepare a long-format dataset that already uses the standard analysis
+#' columns for discrete-time causal modeling. The function orders rows,
+#' remaps subject IDs to consecutive integers, optionally creates a user-named
+#' lag indicator from the previous interval outcome, and trims rows after the
+#' first terminal event within each subject. It does not pad the data to a full
+#' grid and does not alter existing outcome or treatment values.
+#'
+#' @param df A data.frame in long format containing at least the columns
+#'   `pat_id`, `k_idx`, `Y_obs`, `T_obs`, and `A`, plus any covariates.
+#'   `k_idx` is the discrete-time index per subject (typically starting at 1),
+#'   `T_obs` is the terminal-event indicator in {0, 1}, and `Y_obs` is the
+#'   recurrent count for the interval.
+#' @param K  Integer scalar. Total number of discrete intervals per subject. Validated
+#'        for correctness but not used to pad/expand the data in the current
+#'        implementation.
+#' @param lag_col Character scalar or `NULL`. Name of a lag indicator column.
+#'        If provided and the column is absent in `df`, the function auto-generates
+#'        it as an integer indicator based on the subject-specific lag of `I(Y_obs > 0)`.
+#'        If the named column already exists, it is left unchanged except that missing
+#'        values on the first row of each subject are set to 0.
+#' @param need_lag Logical scalar. When `TRUE`, a missing `lag_col` (if named)
+#'        is auto-generated as described above; when `FALSE` (default), no new lag
+#'        column is created.
+#'
+#' @return A list with components:
+#'   - `processed_df`: input data sorted by `pat_id` and `k_idx`, with `pat_id`
+#'     remapped to `1:n_pat`; if requested and missing, a new `lag_col` created
+#'     from `lag(I(Y_obs > 0))` within subject. Rows after the first `T_obs == 1`
+#'     per subject are removed (the death row itself is kept).
+#'   - `n_pat`: number of unique subjects after remapping.
+#'
+#' @details
+#' The function validates inputs, checks for required columns, orders rows,
+#' remaps `pat_id` using a stable one-to-one mapping, optionally generates a
+#' lag indicator based on `Y_obs` from the previous interval, and trims records
+#' after the first terminal event per subject.
+#'
+#' @examples
+#' df_long <- data.frame(
+#'   pat_id = rep(c("S1","S2"), each = 3),
+#'   k_idx  = rep(1:3, times = 2),
+#'   Y_obs  = c(0,1,0, 2,0,1),
+#'   T_obs  = c(0,0,1, 0,0,0),
+#'   A      = c(0,1,1, 0,0,1)
+#' )
+#' out <- suppressMessages(
+#'   preprocess_data(df_long, K = 3, lag_col = "lagY_bin", need_lag = TRUE)
+#' )
+#' head(out$processed_df)
+#' out$n_pat
+>>>>>>> 759e44d2adaa77e0e2258aa398e3f620bf7ff1ce
 #'
 #' @importFrom stats setNames
 #' @keywords internal

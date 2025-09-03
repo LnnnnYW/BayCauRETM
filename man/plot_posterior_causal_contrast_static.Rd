@@ -15,8 +15,13 @@ plot_posterior_causal_contrast_static(
 )
 }
 \arguments{
+<<<<<<< HEAD
 \item{contrast_list}{Either a single \code{gcomp_out} object or a \strong{named} list
 of such objects to compare multiple scenarios side by side.}
+=======
+\item{contrast_list}{Either a single \code{gcomp_out} object or a named list of
+such objects to compare multiple scenarios side by side.}
+>>>>>>> 759e44d2adaa77e0e2258aa398e3f620bf7ff1ce
 
 \item{s_vec}{Integer vector of start intervals to include. If \code{NULL}
 (default), all intervals contained in \verb{$delta} are plotted.}
