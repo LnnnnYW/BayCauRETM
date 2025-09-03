@@ -5,6 +5,7 @@ BayCauRETM
 
 [![R-CMD-check.yaml](https://github.com/LnnnnYW/BayCauRETM/actions/workflows/r.yml/badge.svg)](https://github.com/LnnnnYW/BayCauRETM/actions/workflows/r.yml)
 [![test-coverage.yaml](https://github.com/LnnnnYW/BayCauRETM/actions/workflows/test-coverage.yaml/badge.svg)](https://github.com/LnnnnYW/BayCauRETM/actions/workflows/test-coverage.yaml)
+[![codecov](https://codecov.io/github/LnnnnYW/BayCauRETM/graph/badge.svg?token=WZLG20KBY9)](https://codecov.io/github/LnnnnYW/BayCauRETM)
 ![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)
 <!-- badges: end -->
 
