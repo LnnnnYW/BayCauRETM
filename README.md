@@ -4,8 +4,7 @@ BayCauRETM
 <!-- badges: start -->
 
 [![R-CMD-check.yaml](https://github.com/LnnnnYW/BayCauRETM/actions/workflows/r.yml/badge.svg)](https://github.com/LnnnnYW/BayCauRETM/actions/workflows/r.yml)
-[![Coverage
-Status](https://coveralls.io/repos/github/LnnnnYW/BayCauRETM/badge.svg)](https://coveralls.io/github/LnnnnYW/BayCauRETM)
+[![test-coverage.yaml](https://github.com/LnnnnYW/BayCauRETM/actions/workflows/test-coverage.yaml/badge.svg)](https://github.com/LnnnnYW/BayCauRETM/actions/workflows/test-coverage.yaml)
 ![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)
 <!-- badges: end -->
 
