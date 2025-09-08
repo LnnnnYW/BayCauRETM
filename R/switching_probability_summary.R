@@ -65,7 +65,8 @@
 
 switching_probability_summary <- function(df, covariates = NULL,
                                           scale = c("mass", "hazard")) {
-  scale <- match.arg(scale)
+  if(!scale %in% c("mass", "hazard"))
+    stop("`scale` must be one of 'mass' or 'hazard'.")
 
   # helpers
   .match_any <- function(cands, pool) {
@@ -85,7 +86,7 @@ switching_probability_summary <- function(df, covariates = NULL,
   death_col <- .match_any(c("T_obs","Tk","death","D"),          names(df))
 
   if (is.na(id_col) || is.na(treat_col))
-    stop("Data must contain an ID column (pat_id/id) and a treatment column (A/Ak).")
+    stop("Data must contain an ID column pat_id/id and a treatment column A/Ak.")
 
   if (is.na(time_col)) {
     df <- df |>

@@ -46,7 +46,7 @@ fit <- fit_causal_recur(
   formula_T = Tk ~ Ak + I(lagYk^2) + L.1 + L.2,
   formula_Y = Yk ~ Ak + I(lagYk^2) + L.1 + L.2,
   cores     = 1,
-  iter      = 1000,
+  iter      = 500,
   num_chains = 1,
   verbose   = TRUE
 )

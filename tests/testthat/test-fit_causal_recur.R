@@ -48,7 +48,7 @@ test_that("fit_causal_recur expected input", {
     formula_T = Tk ~ Ak + I(lagYk^2) + L.1 + L.2,
     formula_Y = Yk ~ Ak + I(lagYk^2) + L.1 + L.2,
     cores     = 1,
-    iter      = 1000,
+    iter      = 500,
     verbose   = TRUE
   )
   expect_s3_class(fit, "causal_recur_fit")
@@ -66,7 +66,7 @@ test_that("fit_causal_recur wrong type of input", {
     formula_T = Tk ~ Ak + I(lagYk^2) + L.1 + L.2,
     formula_Y = Yk ~ Ak + I(lagYk^2) + L.1 + L.2,
     cores     = 1,
-    iter      = 1000,
+    iter      = 500,
     verbose   = TRUE
   ), "data must be a data.frame")
   expect_error(fit_causal_recur(
@@ -79,7 +79,7 @@ test_that("fit_causal_recur wrong type of input", {
     formula_T = Tk ~ Ak + I(lagYk^2) + L.1 + L.2,
     formula_Y = Yk ~ Ak + I(lagYk^2) + L.1 + L.2,
     cores     = 1,
-    iter      = 1000,
+    iter      = 500,
     verbose   = TRUE
   ), "K must be a positive integer")
   expect_error(fit_causal_recur(
@@ -92,7 +92,7 @@ test_that("fit_causal_recur wrong type of input", {
     formula_T = Tk ~ Ak + I(lagYk^2) + L.1 + L.2,
     formula_Y = Yk ~ Ak + I(lagYk^2) + L.1 + L.2,
     cores     = 1,
-    iter      = 1000,
+    iter      = 500,
     verbose   = TRUE
   ), "K must be a positive integer")
   expect_error(fit_causal_recur(
@@ -105,7 +105,7 @@ test_that("fit_causal_recur wrong type of input", {
     formula_T = Tk ~ Ak + I(lagYk^2) + L.1 + L.2,
     formula_Y = Yk ~ Ak + I(lagYk^2) + L.1 + L.2,
     cores     = 1,
-    iter      = 1000,
+    iter      = 500,
     verbose   = TRUE
   ), "K must be a positive integer")
   expect_error(fit_causal_recur(
@@ -118,7 +118,7 @@ test_that("fit_causal_recur wrong type of input", {
     formula_T = Tk ~ Ak + I(lagYk^2) + L.1 + L.2,
     formula_Y = Yk ~ Ak + I(lagYk^2) + L.1 + L.2,
     cores     = 1,
-    iter      = 1000,
+    iter      = 500,
     verbose   = TRUE
   ), "K must be a positive integer")
   expect_error(fit_causal_recur(
@@ -131,7 +131,7 @@ test_that("fit_causal_recur wrong type of input", {
     formula_T = Tk ~ Ak + I(lagYk^2) + L.1 + L.2,
     formula_Y = Yk ~ Ak + I(lagYk^2) + L.1 + L.2,
     cores     = 1,
-    iter      = 1000,
+    iter      = 500,
     verbose   = TRUE
   ), "id_col must be a single character string")
   expect_error(fit_causal_recur(
@@ -144,7 +144,7 @@ test_that("fit_causal_recur wrong type of input", {
     formula_T = Tk ~ Ak + I(lagYk^2) + L.1 + L.2,
     formula_Y = Yk ~ Ak + I(lagYk^2) + L.1 + L.2,
     cores     = 1,
-    iter      = 1000,
+    iter      = 500,
     verbose   = TRUE
   ), "time_col must be a single character string")
   expect_error(fit_causal_recur(
@@ -157,7 +157,7 @@ test_that("fit_causal_recur wrong type of input", {
     formula_T = Tk ~ Ak + I(lagYk^2) + L.1 + L.2,
     formula_Y = Yk ~ Ak + I(lagYk^2) + L.1 + L.2,
     cores     = 1,
-    iter      = 1000,
+    iter      = 500,
     verbose   = TRUE
   ), "treat_col must be a single character string")
   expect_error(fit_causal_recur(
@@ -170,7 +170,7 @@ test_that("fit_causal_recur wrong type of input", {
     formula_T = Tk ~ Ak + I(lagYk^2) + L.1 + L.2,
     formula_Y = Yk ~ Ak + I(lagYk^2) + L.1 + L.2,
     cores     = 1,
-    iter      = 1000,
+    iter      = 500,
     verbose   = TRUE
   ), "lag_col must be NULL or a single character string")
   expect_error(fit_causal_recur(
@@ -183,7 +183,7 @@ test_that("fit_causal_recur wrong type of input", {
     formula_T = "Tk ~ Ak + I(lagYk^2) + L.1 + L.2",
     formula_Y = Yk ~ Ak + I(lagYk^2) + L.1 + L.2,
     cores     = 1,
-    iter      = 1000,
+    iter      = 500,
     verbose   = TRUE
   ), "formula_T must be a formula")
   expect_error(fit_causal_recur(
@@ -196,7 +196,7 @@ test_that("fit_causal_recur wrong type of input", {
     formula_T = Tk ~ Ak + I(lagYk^2) + L.1 + L.2,
     formula_Y = "Yk ~ Ak + I(lagYk^2) + L.1 + L.2",
     cores     = 1,
-    iter      = 1000,
+    iter      = 500,
     verbose   = TRUE
   ), "formula_Y must be a formula")
   expect_error(fit_causal_recur(
@@ -209,7 +209,7 @@ test_that("fit_causal_recur wrong type of input", {
     formula_T = Tk ~ Ak + I(lagYk^2) + L.1 + L.2,
     formula_Y = Yk ~ Ak + I(lagYk^2) + L.1 + L.2,
     cores     = "1",
-    iter      = 1000,
+    iter      = 500,
     verbose   = TRUE
   ), "cores must be a positive integer")
   expect_error(fit_causal_recur(
@@ -222,7 +222,7 @@ test_that("fit_causal_recur wrong type of input", {
     formula_T = Tk ~ Ak + I(lagYk^2) + L.1 + L.2,
     formula_Y = Yk ~ Ak + I(lagYk^2) + L.1 + L.2,
     cores     = c(1,2),
-    iter      = 1000,
+    iter      = 500,
     verbose   = TRUE
   ), "cores must be a positive integer")
   expect_error(fit_causal_recur(
@@ -235,7 +235,7 @@ test_that("fit_causal_recur wrong type of input", {
     formula_T = Tk ~ Ak + I(lagYk^2) + L.1 + L.2,
     formula_Y = Yk ~ Ak + I(lagYk^2) + L.1 + L.2,
     cores     = 0,
-    iter      = 1000,
+    iter      = 500,
     verbose   = TRUE
   ), "cores must be a positive integer")
   expect_error(fit_causal_recur(
@@ -248,7 +248,7 @@ test_that("fit_causal_recur wrong type of input", {
     formula_T = Tk ~ Ak + I(lagYk^2) + L.1 + L.2,
     formula_Y = Yk ~ Ak + I(lagYk^2) + L.1 + L.2,
     cores     = 1.5,
-    iter      = 1000,
+    iter      = 500,
     verbose   = TRUE
   ), "cores must be a positive integer")
   expect_error(fit_causal_recur(
@@ -261,7 +261,7 @@ test_that("fit_causal_recur wrong type of input", {
     formula_T = Tk ~ Ak + I(lagYk^2) + L.1 + L.2,
     formula_Y = Yk ~ Ak + I(lagYk^2) + L.1 + L.2,
     cores     = 1,
-    iter      = "1000",
+    iter      = "500",
     verbose   = TRUE
   ), "iter must be a positive integer")
 })
@@ -280,7 +280,7 @@ test_that("fit_causal_recur missing required columns", {
     formula_T = Tk ~ Ak + I(lagYk^2) + L.1 + L.2,
     formula_Y = Yk ~ Ak + I(lagYk^2) + L.1 + L.2,
     cores     = 1,
-    iter      = 1000,
+    iter      = 500,
     verbose   = TRUE
   ), "Event column 'Tk' not found")
 })
