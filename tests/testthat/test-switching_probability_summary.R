@@ -59,6 +59,12 @@ test_that("switching_probability_summary with different scale works", {
   sp_summary <- switching_probability_summary(fit$data_preprocessed, scale = "hazard")
   expect_type(sp_summary, "list")
 })
+test_that("switching_probability_summary plot works", {
+  sp_summary <- switching_probability_summary(fit$data_preprocessed, scale = "mass")
+  p1 <- plot(sp_summary)
+  expect_s3_class(p1, "ggplot")
+})
+
 
 test_that("switching_probability_summary with wrong df", {
   expect_error(switching_probability_summary(fit, scale = "mass"), "Data must contain an ID column pat_id/id and a treatment column A/Ak.")
