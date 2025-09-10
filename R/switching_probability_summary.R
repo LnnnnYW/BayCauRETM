@@ -97,7 +97,10 @@ switching_probability_summary <- function(df, covariates = NULL,
   }
 
   # Order and keep only needed cols early
-  df <- df[order(df[[id_col]], df[[time_col]]), , drop = FALSE]
+  df <- df[order(df[[id_col]], df[[time_col]]), , drop = FALSE] |>
+    dplyr::group_by(.data[[id_col]]) |>
+    dplyr::filter(dplyr::row_number() == 1 | dplyr::lag(.data[[treat_col]], default = 0) == 0) |>
+    dplyr::ungroup()
 
   # build 'at risk' and initiation indicator
   # At risk at k : alive until k-1 AND not yet initiated (A_prev == 0)
@@ -114,6 +117,7 @@ switching_probability_summary <- function(df, covariates = NULL,
       at_risk = (alive_to_km1 == 1L) & (A_prev == 0)
     ) |>
     dplyr::ungroup()
+
 
   # initiation at k among those at risk at k (discrete-time hazard outcome)
   d <- d |>
@@ -138,8 +142,11 @@ switching_probability_summary <- function(df, covariates = NULL,
   rhs_terms <- c(.bt(fac_time), .bt(cov_map))
   form <- stats::as.formula(paste0("init_k ~ ", paste(rhs_terms, collapse = " + ")))
 
+  print(rhs_terms)
+
   mf <- stats::model.frame(form, data = d[at_risk_rows, , drop = FALSE],
                            na.action = stats::na.omit)
+  View(mf)
   if (!nrow(mf)) stop("No rows remain after removing NA for hazard model.")
   rows_fit <- as.integer(rownames(mf))
 
@@ -152,31 +159,32 @@ switching_probability_summary <- function(df, covariates = NULL,
 
   d$hazard <- haz_hat
 
+
   if (scale == "mass") {
     d <- d |>
       dplyr::group_by(.data[[id_col]]) |>
       dplyr::mutate(
         one_minus_h = dplyr::if_else(at_risk & is.finite(hazard), 1 - hazard, 1),
         S_km1       = dplyr::lag(cumprod(one_minus_h), default = 1),
-        switch_prob = dplyr::if_else(at_risk & is.finite(hazard), S_km1 * hazard, 0)
+        switch_prob = dplyr::if_else(at_risk & is.finite(hazard), S_km1 * (1 - hazard), 0)
       ) |>
       dplyr::ungroup()
   } else {
     d$switch_prob <- d$hazard
   }
 
+  View(d)
+
 
   d_plot <- d[at_risk_rows, , drop = FALSE]
-
-  N_ids <- dplyr::n_distinct(d[[id_col]])
 
   by_k <- d |>
     dplyr::group_by(.data[[time_col]]) |>
     dplyr::summarise(
       n_at_risk = sum(at_risk),
-      mean   = sum(switch_prob, na.rm = TRUE) / N_ids,   # 总体质量 P(W=k)
+      mean   = sum(switch_prob, na.rm = TRUE) / n(),   # 总体质量 P(W=k)
       sd_    = stats::sd(switch_prob, na.rm = TRUE),     # 以“全体”为样本
-      se     = sd_ / sqrt(N_ids),
+      se     = sd_ / sqrt(n()),
       lo95   = pmax(0, mean - 1.96 * se),
       hi95   = pmin(1, mean + 1.96 * se),
       p25    = stats::quantile(switch_prob, 0.25, na.rm = TRUE),
