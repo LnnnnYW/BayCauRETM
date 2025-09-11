@@ -97,10 +97,7 @@ switching_probability_summary <- function(df, covariates = NULL,
   }
 
   # Order and keep only needed cols early
-  df <- df[order(df[[id_col]], df[[time_col]]), , drop = FALSE] |>
-    dplyr::group_by(.data[[id_col]]) |>
-    dplyr::filter(dplyr::row_number() == 1 | dplyr::lag(.data[[treat_col]], default = 0) == 0) |>
-    dplyr::ungroup()
+  df <- df[order(df[[id_col]], df[[time_col]]), , drop = FALSE]
 
   # build 'at risk' and initiation indicator
   # At risk at k : alive until k-1 AND not yet initiated (A_prev == 0)
@@ -139,14 +136,15 @@ switching_probability_summary <- function(df, covariates = NULL,
   while (fac_time %in% names(d)) fac_time <- paste0(fac_time, "_")
   d[[fac_time]] <- factor(d[[time_col]])
 
+  #max time in at risk rows
+  max_time <- max(d[[time_col]][at_risk_rows])
+
   rhs_terms <- c(.bt(fac_time), .bt(cov_map))
   form <- stats::as.formula(paste0("init_k ~ ", paste(rhs_terms, collapse = " + ")))
 
-  print(rhs_terms)
-
   mf <- stats::model.frame(form, data = d[at_risk_rows, , drop = FALSE],
                            na.action = stats::na.omit)
-  View(mf)
+
   if (!nrow(mf)) stop("No rows remain after removing NA for hazard model.")
   rows_fit <- as.integer(rownames(mf))
 
@@ -154,8 +152,11 @@ switching_probability_summary <- function(df, covariates = NULL,
                     family = stats::binomial,
                     control = stats::glm.control(maxit = 100))
 
+  #use only data that time <= max_time
+  d <- d[d[[time_col]] <= max_time, , drop = FALSE]
+
   haz_hat <- rep(NA_real_, nrow(d))
-  haz_hat[rows_fit] <- stats::predict(mod, type = "response")
+  haz_hat <- stats::predict(mod, type = "response", newdata = d)
 
   d$hazard <- haz_hat
 
@@ -164,27 +165,28 @@ switching_probability_summary <- function(df, covariates = NULL,
     d <- d |>
       dplyr::group_by(.data[[id_col]]) |>
       dplyr::mutate(
-        one_minus_h = dplyr::if_else(at_risk & is.finite(hazard), 1 - hazard, 1),
+        # one_minus_h = dplyr::if_else(at_risk & is.finite(hazard), 1 - hazard, 1),
+        one_minus_h = 1 - hazard,
         S_km1       = dplyr::lag(cumprod(one_minus_h), default = 1),
-        switch_prob = dplyr::if_else(at_risk & is.finite(hazard), S_km1 * (1 - hazard), 0)
+        # switch_prob = dplyr::if_else(at_risk & is.finite(hazard), S_km1 * (1 - hazard), 0)
+        switch_prob = S_km1 * (1 - hazard)
       ) |>
       dplyr::ungroup()
   } else {
     d$switch_prob <- d$hazard
   }
 
-  View(d)
+  d_plot <- d
 
-
-  d_plot <- d[at_risk_rows, , drop = FALSE]
+  N <- length(unique(d[[id_col]]))
 
   by_k <- d |>
     dplyr::group_by(.data[[time_col]]) |>
     dplyr::summarise(
       n_at_risk = sum(at_risk),
-      mean   = sum(switch_prob, na.rm = TRUE) / n(),   # 总体质量 P(W=k)
+      mean   = sum(switch_prob, na.rm = TRUE) / N,   # 总体质量 P(W=k)
       sd_    = stats::sd(switch_prob, na.rm = TRUE),     # 以“全体”为样本
-      se     = sd_ / sqrt(n()),
+      se     = sd_ / sqrt(N),
       lo95   = pmax(0, mean - 1.96 * se),
       hi95   = pmin(1, mean + 1.96 * se),
       p25    = stats::quantile(switch_prob, 0.25, na.rm = TRUE),
@@ -243,7 +245,22 @@ plot.switching_summary <- function(x, type = c("boxplot","line"), ...) {
     stop("Package 'ggplot2' is required for plotting.")
 
   by_k   <- x$by_k
-  d_plot <- transform(x$df_haz, switch_prob = ifelse(at_risk, switch_prob, 0))
+  d_plot <- x$df_haz
+
+  #create a data.frame with N * max_time rows, colunmns: id_col, time_col, switch_prob,
+  #enter value from d_plot, fill missing with 0
+  # figure out max_time
+  max_time <- max(d_plot[[x$time_col]], na.rm = TRUE)
+  id <- unique(d_plot[[x$id_col]])
+  full_grid <- expand.grid(
+    id = id,
+    k_idx = seq_len(max_time)
+  )
+  names(full_grid)[1] <- x$id_col
+  d_plot <- merge(full_grid, d_plot[, c(x$id_col, x$time_col, "switch_prob")],
+                  by = c(x$id_col, x$time_col), all.x = TRUE)
+  d_plot$switch_prob[is.na(d_plot$switch_prob)] <- 0
+
 
   if (type == "boxplot") {
     p <- ggplot2::ggplot() +

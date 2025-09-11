@@ -112,7 +112,7 @@ Specifically, "T-model" refers to the baseline hazard and covariate effects in t
 ```{r}
 # MCMC Diagnosis
 rstan::check_hmc_diagnostics(fit$stan_fit)
-diag <- mcmc_diagnosis(fit,positivity     = FALSE)
+diag <- mcmc_diagnosis(fit)
 plot(diag, pars = "T-model") 
 ```
 
@@ -184,7 +184,7 @@ By default, the function uses scale="mass":
 
 ```{r}
 # default (scale="mass")
-sw  <- switching_probability_summary(fit$data_preprocessed)                  
+sw  <- switching_probability_summary(fit$data_preprocessed, covariates = c("L.1", "L.2"), scale="mass")          
 plot(sw)
 ```
 
