@@ -50,6 +50,18 @@ plot_posterior_causal_contrast_interactive <- function(contrast_list,
     ...
   )
 
+  #check input
+  if (!is.null(interactive) && (!is.logical(interactive) || length(interactive) != 1))
+    stop("interactive must be a single logical value")
+  if (!is.null(save_file) && !is.character(save_file))
+    stop("save_file must be NULL or a character string")
+  if (!is.numeric(width) || length(width) != 1 || width <= 0)
+    stop("width must be a single positive number")
+  if (!is.numeric(height) || length(height) != 1 || height <= 0)
+    stop("height must be a single positive number")
+  if (!is.numeric(dpi) || length(dpi) != 1 || dpi <= 0)
+    stop("dpi must be a single positive number")
+
   if (!is.null(save_file))
     ggplot2::ggsave(save_file, plot = p,
                     width = width, height = height, dpi = dpi)

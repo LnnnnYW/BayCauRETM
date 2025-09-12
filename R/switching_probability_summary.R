@@ -292,6 +292,29 @@ plot.switching_summary <- function(x, type = c("boxplot","line"), ...) {
       ) +
       ggplot2::coord_cartesian(ylim = c(0, 1)) +
       ggplot2::theme_minimal(base_size = 12)
+
+    #group by id and then draw lines for each id
+    # p <- ggplot2::ggplot(
+    #   d_plot,
+    #   ggplot2::aes(
+    #     x = as.numeric(factor(.data[[x$time_col]])),
+    #     y = switch_prob,
+    #     group = .data[[x$id_col]]
+    #   )
+    # ) +
+    #   ggplot2::geom_line(size = 0.6, color = "steelblue") +
+    #   ggplot2::geom_point(size = 1.2, color = "steelblue") +
+    #   ggplot2::labs(
+    #     title = if (x$scale == "mass")
+    #       "Switching probability over intervals (per subject)"
+    #     else
+    #       "Switching hazard over intervals (per subject, at risk)",
+    #     x = "Interval (k_idx)", y = "Probability"
+    #   ) +
+    #   ggplot2::coord_cartesian(ylim = c(0, 1)) +
+    #   ggplot2::theme_minimal(base_size = 12) +
+    #   ggplot2::facet_wrap(~ .data[[x$id_col]], scales = "free_y")
+
   }
 
   print(p)
