@@ -189,7 +189,7 @@ plot(sw)
 ```
 
 ```{r}
-sw  <- switching_probability_summary(fit$data_preprocessed, scale="hazard")
+sw  <- switching_probability_summary(fit$data_preprocessed, covariates = c("L.1", "L.2"), scale="hazard")
 plot(sw)
 ```
 

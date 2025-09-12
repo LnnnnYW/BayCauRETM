@@ -62,22 +62,32 @@ gcomp <- g_computation(fit_out = fit,
 
 #test expected input
 test_that("plot_posterior_causal_contrast_interactive works", {
-  p <- plot_posterior_causal_contrast_interactive(gcomp, s_vec = 3)
-  expect_s3_class(p, "ggplot")
+  p <- plot_posterior_causal_contrast_interactive(gcomp, s_vec = 3, interactive = TRUE)
+  expect_s3_class(p, "plotly")
 })
 
 #test wrong type of input
 test_that("plot_posterior_causal_contrast_interactive wrong type of input", {
-  expect_error(plot_posterior_causal_contrast_interactive(gcomp, s_vec = -3), "s_vec must be a vector of positive integers")
-  expect_error(plot_posterior_causal_contrast_interactive(gcomp, theme_fn = "a"), "theme_fn must be a ggplot2 theme function")
-  expect_error(plot_posterior_causal_contrast_interactive(gcomp, point_size = -1), "point_size must be a single positive number")
-  expect_error(plot_posterior_causal_contrast_interactive(gcomp, error_width = 2), "error_width must be a single number in \\(0, 1\\]")
-  expect_error(plot_posterior_causal_contrast_interactive(gcomp, ref_line = "a"), "ref_line must be NULL or a single number")
-  expect_error(plot_posterior_causal_contrast_interactive(gcomp, interactive = "a"), "interactive must be a single logical value")
-  expect_error(plot_posterior_causal_contrast_interactive(gcomp, save_file = 1), "save_file must be NULL or a character string")
-  expect_error(plot_posterior_causal_contrast_interactive(gcomp, width = -1), "width must be a single positive number")
-  expect_error(plot_posterior_causal_contrast_interactive(gcomp, height = -1), "height must be a single positive number")
-  expect_error(plot_posterior_causal_contrast_interactive(gcomp, dpi = -1), "dpi must be a single positive number")
+  expect_error(plot_posterior_causal_contrast_interactive(gcomp, s_vec = -3, interactive = TRUE),
+               "s_vec must be a vector of positive integers")
+  expect_error(plot_posterior_causal_contrast_interactive(gcomp, theme_fn = "a", interactive = TRUE),
+               "theme_fn must be a ggplot2 theme function")
+  expect_error(plot_posterior_causal_contrast_interactive(gcomp, point_size = -1, interactive = TRUE),
+               "point_size must be a single positive number")
+  expect_error(plot_posterior_causal_contrast_interactive(gcomp, error_width = 2, interactive = TRUE),
+               "error_width must be a single number in \\(0, 1\\]")
+  expect_error(plot_posterior_causal_contrast_interactive(gcomp, ref_line = "a", interactive = TRUE),
+               "ref_line must be NULL or a single number")
+  expect_error(plot_posterior_causal_contrast_interactive(gcomp, interactive = "a", interactive = TRUE),
+               "interactive must be a single logical value")
+  expect_error(plot_posterior_causal_contrast_interactive(gcomp, save_file = 1, interactive = TRUE),
+               "save_file must be NULL or a character string")
+  expect_error(plot_posterior_causal_contrast_interactive(gcomp, width = -1, interactive = TRUE),
+               "width must be a single positive number")
+  expect_error(plot_posterior_causal_contrast_interactive(gcomp, height = -1, interactive = TRUE),
+               "height must be a single positive number")
+  expect_error(plot_posterior_causal_contrast_interactive(gcomp, dpi = -1, interactive = TRUE),
+               "dpi must be a single positive number")
 })
 
 
