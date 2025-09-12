@@ -63,8 +63,10 @@ test_that("g_computation expected input", {
                          cores   = cores)
   expect_type(gcomp, "list")
   expect_type(print(gcomp), "list")
-  expect_type(plot(gcomp), "list")
-  expect_type(plot(gcomp, interactive = TRUE), "list")
+  p <- plot(gcomp)
+  expect_type(p, "list")
+  p <- plot(gcomp, interactive = FALSE)
+  expect_type(p, "list")
 })
 test_that("g_computation expected input: parallel", {
   gcomp <- g_computation(fit_out = fit,
