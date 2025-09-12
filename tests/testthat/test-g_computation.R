@@ -64,9 +64,9 @@ test_that("g_computation expected input", {
   expect_type(gcomp, "list")
   expect_type(print(gcomp), "list")
   p <- plot(gcomp)
-  expect_type(p, "list")
+  expect_s3_class(p, "ggplot")
   p <- plot(gcomp, interactive = FALSE)
-  expect_type(p, "list")
+  expect_s3_class(p, "ggplot")
 })
 test_that("g_computation expected input: parallel", {
   gcomp <- g_computation(fit_out = fit,
