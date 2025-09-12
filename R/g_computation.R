@@ -246,15 +246,41 @@ g_computation <- function(Lmat = NULL,
   W      <- matrix(stats::rgamma(ndraws * n_pat, 1, 1), ndraws, n_pat)
   pi_mat <- W / rowSums(W)
 
+  # Cap and sanitize requested cores (CRAN/_R_CHECK_LIMIT_CORES_ respected)
+  .sanitize_cores <- function(n_req) {
+    n_detect <- suppressWarnings(tryCatch(parallel::detectCores(logical = TRUE), error = function(e) NA_integer_))
+    n_detect <- if (is.na(n_detect)) 1L else n_detect
+
+    # honor common knobs if present
+    n_env <- suppressWarnings(as.integer(Sys.getenv("R_PARALLEL_NUM_THREADS", "")))
+    n_env <- if (is.na(n_env)) NA_integer_ else n_env
+
+    n_opt <- suppressWarnings(as.integer(getOption("mc.cores", NA_integer_)))
+
+    n <- n_req
+    if (!is.na(n_env)) n <- min(n, n_env)
+    if (!is.na(n_opt)) n <- min(n, n_opt)
+    n <- min(n, n_detect)
+
+    # CRAN/check environments set this; hard-cap at 2
+    if (identical(tolower(Sys.getenv("_R_CHECK_LIMIT_CORES_")), "true")) {
+      n <- min(n, 2L)
+    }
+    max(1L, n)
+  }
+
+  cores <- .sanitize_cores(cores)
+
   cl <- NULL
   if (cores > 1) {
     cl <- parallel::makeCluster(cores)
     on.exit(parallel::stopCluster(cl), add = TRUE)
     parallel::clusterExport(
       cl,
-      varlist = c("sim_interv",
-                  "build_lag_mm_from_y", "build_lag_mm_from_y_T",
-                  "Lmat", "n_pat", "K", "B", "post", "name_Tlag"),
+      # varlist = c("sim_interv",
+      #             "build_lag_mm_from_y", "build_lag_mm_from_y_T",
+      #             "Lmat", "n_pat", "K", "B", "post", "name_Tlag"),
+      varlist = ls(envir = environment(), all.names = TRUE),
       envir = environment()
     )
 

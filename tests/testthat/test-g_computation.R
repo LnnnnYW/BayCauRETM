@@ -62,6 +62,16 @@ test_that("g_computation expected input", {
                          B       = B,
                          cores   = cores)
   expect_type(gcomp, "list")
+  expect_type(print(gcomp), "list")
+  expect_type(plot(gcomp), "list")
+  expect_type(plot(gcomp, interactive = TRUE), "list")
+})
+test_that("g_computation expected input: parallel", {
+  gcomp <- g_computation(fit_out = fit,
+                         s_vec   = s_vec,
+                         B       = B,
+                         cores   = 4)
+  expect_type(gcomp, "list")
 })
 
 # wrong type of input

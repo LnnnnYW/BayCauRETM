@@ -44,6 +44,25 @@ plot_posterior_causal_contrast_static <- function(contrast_list,
                                                   ref_line     = NULL,
                                                   ...) {
 
+  # Input checks
+  if (!is.null(s_vec) && (!is.numeric(s_vec) || any(s_vec <= 0) || any(s_vec != floor(s_vec)))) {
+    stop("s_vec must be a vector of positive integers")
+  }
+  if (!is.function(theme_fn) || !inherits(theme_fn(), "theme")) {
+    stop("theme_fn must be a ggplot2 theme function")
+  }
+  if (!is.numeric(point_size) || length(point_size) != 1 || point_size <= 0) {
+    stop("point_size must be a single positive number")
+  }
+  if (!is.numeric(error_width) || length(error_width) != 1 ||
+      error_width <= 0 || error_width > 1) {
+    stop("error_width must be a single number in (0, 1]")
+  }
+  if (!is.null(ref_line) &&
+      (!is.numeric(ref_line) || length(ref_line) != 1)) {
+    stop("ref_line must be NULL or a single number")
+  }
+
   if (!is.list(contrast_list) ||
       (length(contrast_list) > 0 && !inherits(contrast_list[[1]], "gcomp_out"))) {
     contrast_list <- list(default = contrast_list)

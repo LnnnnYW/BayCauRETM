@@ -285,3 +285,37 @@ test_that("fit_causal_recur missing required columns", {
   ), "Event column 'Tk' not found")
 })
 
+fit <- fit_causal_recur(
+  data      = df,
+  K         = K,
+  id_col    = "id",
+  time_col  = "k_fac",
+  treat_col = "Ak",
+  lag_col   = "lagYk",
+  formula_T = Tk ~ Ak + I(lagYk^2) + L.1 + L.2,
+  formula_Y = Yk ~ Ak + I(lagYk^2) + L.1 + L.2,
+  cores     = 1,
+  iter      = 500,
+  verbose   = TRUE
+)
+
+#test summary
+test_that("summary.causal_recur_fit works", {
+  summ <- summary(fit)
+  expect_type(summ, "list")
+})
+#not found parameter
+test_that("summary.causal_recur_fit no parameter", {
+  expect_error(summary(fit, pars_to_report = "L1"), "Error extracting summary for parameters L1")
+})
+
+#test print
+test_that("print.causal_recur_fit works", {
+  expect_type(print(fit), "list")
+})
+#test plot
+test_that("plot.causal_recur_fit works", {
+  expect_null(plot(fit))
+})
+
+

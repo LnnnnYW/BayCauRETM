@@ -70,6 +70,51 @@ test_that("result_summary_table expected input", {
                                          export_file   = NULL)
   expect_type(result_summary, "list")
 })
+test_that("result_summary_table expected input: s_vec", {
+  result_summary <- result_summary_table(fit_out = fit,
+                                         gcomp_out = gcomp,
+                                         pars_to_report = c("beta0","beta1","theta0","theta1","theta_lag"),
+                                         s_vec         = c(3,6),
+                                         format        = "data.frame",
+                                         export_file   = NULL)
+  expect_type(result_summary, "list")
+})
+test_that("result_summary_table expected input: format", {
+  result_summary <- result_summary_table(fit_out = fit,
+                                         gcomp_out = gcomp,
+                                         pars_to_report = c("beta0","beta1","theta0","theta1","theta_lag"),
+                                         s_vec         = NULL,
+                                         format        = "kable",
+                                         export_file   = NULL)
+  expect_type(result_summary, "list")
+})
+test_that("result_summary_table expected input: format", {
+  result_summary <- result_summary_table(fit_out = fit,
+                                         gcomp_out = gcomp,
+                                         pars_to_report = c("beta0","beta1","theta0","theta1","theta_lag"),
+                                         s_vec         = NULL,
+                                         format        = "gt",
+                                         export_file   = NULL)
+  expect_type(result_summary, "list")
+})
+test_that("result_summary_table expected input: export_file", {
+  result_summary <- result_summary_table(fit_out = fit,
+                                         gcomp_out = gcomp,
+                                         pars_to_report = c("beta0","beta1","theta0","theta1","theta_lag"),
+                                         s_vec         = NULL,
+                                         format        = "gt",
+                                         export_file   = "1.xlsx")
+  expect_type(result_summary, "list")
+})
+test_that("result_summary_table expected input: export_file", {
+  result_summary <- result_summary_table(fit_out = fit,
+                                         gcomp_out = gcomp,
+                                         pars_to_report = c("beta0","beta1","theta0","theta1","theta_lag"),
+                                         s_vec         = NULL,
+                                         format        = "gt",
+                                         export_file   = "1.csv")
+  expect_type(result_summary, "list")
+})
 
 # wrong type of input
 test_that("result_summary_table wrong type of input", {
@@ -94,6 +139,12 @@ test_that("result_summary_table wrong type of input", {
   expect_error(result_summary_table(fit_out = fit,
                                          gcomp_out = gcomp,
                                          pars_to_report = c("beta0","beta1","theta0","theta1","theta_lag"),
+                                         s_vec         = c(-3, 6),
+                                         format        = "data.frame",
+                                         export_file   = NULL), "'s_vec' must be NULL or a numeric vector of positive integers")
+  expect_error(result_summary_table(fit_out = fit,
+                                         gcomp_out = gcomp,
+                                         pars_to_report = c("beta0","beta1","theta0","theta1","theta_lag"),
                                          s_vec         = NULL,
                                          format        = c("data.frame", "list"),
                                          export_file   = NULL), "'format' must be a single character string")
@@ -103,5 +154,17 @@ test_that("result_summary_table wrong type of input", {
                                          s_vec         = NULL,
                                          format        = "data.frame",
                                          export_file   = c("file1", "file2")), "'export_file' must be NULL or a single character string")
+})
+
+result_summary <- result_summary_table(fit_out = fit,
+                                       gcomp_out = gcomp,
+                                       pars_to_report = c("beta0","beta1","theta0","theta1","theta_lag"),
+                                       s_vec         = NULL,
+                                       format        = "data.frame",
+                                       export_file   = NULL)
+
+#test print
+test_that("print result_summary_table", {
+  expect_type(print(result_summary), "list")
 })
 

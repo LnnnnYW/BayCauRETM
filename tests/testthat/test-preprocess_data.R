@@ -41,6 +41,10 @@ test_that("preprocess_data expected input", {
   expect_type(preprocess_data(df, K)$processed_df, "list")
   expect_type(preprocess_data(df, K)$n_pat, "integer")
 })
+test_that("preprocess_data expected input", {
+  expect_type(preprocess_data(df, K, lag_col = "lag", need_lag = TRUE)$processed_df, "list")
+  expect_type(preprocess_data(df, K, lag_col = "lag", need_lag = TRUE)$n_pat, "integer")
+})
 
 #columns missing
 test_that("preprocess_data missing required columns", {

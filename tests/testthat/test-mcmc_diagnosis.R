@@ -55,6 +55,7 @@ fit <- fit_causal_recur(
 test_that("mcmc_diagnosis expected input", {
   diagnosis <- mcmc_diagnosis(fit)
   expect_type(diagnosis, "list")
+  expect_type(print(diagnosis), "list")
 })
 
 
@@ -77,4 +78,15 @@ test_that("mcmc_diagnosis wrong type of input", {
 })
 
 
+###test plot
+diagnosis <- mcmc_diagnosis(fit)
+test_that("mcmc_diagnosis plot works", {
+  p <- plot(diagnosis)
+  expect_type(p, "list")
+})
 
+###not found parameter
+test_that("mcmc_diagnosis plot not found parameter", {
+  expect_warning(plot(diagnosis, pars = c("L1")),
+                 "Some 'pars' were not found in the available plots and will be skipped.")
+})

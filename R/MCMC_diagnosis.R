@@ -205,6 +205,10 @@ plot.mcmc_diag <- function(x, pars = NULL, use_pretty = TRUE, ...) {
     } else {
       sel <- keys %in% pars
     }
+    #if length not match, return warning
+    if (sum(sel) != length(pars)) {
+      warning("Some 'pars' were not found in the available plots and will be skipped.")
+    }
     plots <- plots[sel]
   }
   for (p in plots) print(p)

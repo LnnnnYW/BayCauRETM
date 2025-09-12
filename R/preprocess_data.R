@@ -7,16 +7,16 @@ utils::globalVariables(c(
   "sd_", "se", "lo95", "hi95"
 ))
 
-`%||%` <- function(x, y) if (is.null(x)) y else x
-
-.vars_in_formula <- function(f) {
-  if (is.null(f)) return(character(0))
-  unique(all.vars(stats::delete.response(stats::terms(f))))
-}
-
-.formula_uses_var <- function(f, varname) {
-  varname %in% .vars_in_formula(f)
-}
+# `%||%` <- function(x, y) if (is.null(x)) y else x
+#
+# .vars_in_formula <- function(f) {
+#   if (is.null(f)) return(character(0))
+#   unique(all.vars(stats::delete.response(stats::terms(f))))
+# }
+#
+# .formula_uses_var <- function(f, varname) {
+#   varname %in% .vars_in_formula(f)
+# }
 
 
 #' Preprocess Long-Format Data (ordering, ID remapping, optional lag creation)

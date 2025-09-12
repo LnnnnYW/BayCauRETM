@@ -339,7 +339,7 @@ summary.causal_recur_fit <- function(object,
   stan_fit <- object$stan_fit
   sum_obj  <- tryCatch(rstan::summary(stan_fit, pars = pars_to_report, ...),
                        error = function(e) {
-                         warning("Error extracting summary for parameters: ",
+                         stop("Error extracting summary for parameters ",
                                  paste(pars_to_report, collapse = ", "))
                          NULL
                        })

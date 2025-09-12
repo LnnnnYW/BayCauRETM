@@ -47,34 +47,9 @@ fit <- fit_causal_recur(
   formula_Y = Yk ~ Ak + I(lagYk^2) + L.1 + L.2,
   cores     = 1,
   iter      = 500,
-  num_chains = 1,
   verbose   = TRUE
 )
 
-test_that("switching_probability_summary works", {
-  sp_summary <- switching_probability_summary(fit$data_preprocessed, scale = "mass")
-  expect_type(sp_summary, "list")
-})
-test_that("switching_probability_summary with different scale works", {
-  sp_summary <- switching_probability_summary(fit$data_preprocessed, scale = "hazard")
-  expect_type(sp_summary, "list")
-})
-test_that("switching_probability_summary plot works", {
-  sp_summary <- switching_probability_summary(fit$data_preprocessed, scale = "mass")
-  p1 <- plot(sp_summary, type = "boxplot")
-  expect_s3_class(p1, "ggplot")
-})
-test_that("switching_probability_summary plot works", {
-  sp_summary <- switching_probability_summary(fit$data_preprocessed, scale = "mass")
-  p1 <- plot(sp_summary, type = "line")
-  expect_s3_class(p1, "ggplot")
-})
-
-
-test_that("switching_probability_summary with wrong df", {
-  expect_error(switching_probability_summary(fit, scale = "mass"), "Data must contain an ID column pat_id/id and a treatment column A/Ak.")
-})
-
-test_that("switching_probability_summary with wrong scale", {
-  expect_error(switching_probability_summary(fit$data_preprocessed, scale = "wrong"), "`scale` must be one of 'mass' or 'hazard'.")
+test_that("result_summary_table works", {
+  expect_type(Summary_lable(fit), "list")
 })

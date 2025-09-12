@@ -51,30 +51,28 @@ fit <- fit_causal_recur(
   verbose   = TRUE
 )
 
-test_that("switching_probability_summary works", {
-  sp_summary <- switching_probability_summary(fit$data_preprocessed, scale = "mass")
-  expect_type(sp_summary, "list")
+B      <- 10
+s_vec  <- c(3, 6, 9)
+cores <- 1
+
+gcomp <- g_computation(fit_out = fit,
+                       s_vec   = s_vec,
+                       B       = B,
+                       cores   = cores)
+
+#test expected input
+test_that("plot_posterior_causal_contrast_static works", {
+  p <- plot_posterior_causal_contrast_static(gcomp, s_vec = 3)
+  expect_s3_class(p, "ggplot")
 })
-test_that("switching_probability_summary with different scale works", {
-  sp_summary <- switching_probability_summary(fit$data_preprocessed, scale = "hazard")
-  expect_type(sp_summary, "list")
-})
-test_that("switching_probability_summary plot works", {
-  sp_summary <- switching_probability_summary(fit$data_preprocessed, scale = "mass")
-  p1 <- plot(sp_summary, type = "boxplot")
-  expect_s3_class(p1, "ggplot")
-})
-test_that("switching_probability_summary plot works", {
-  sp_summary <- switching_probability_summary(fit$data_preprocessed, scale = "mass")
-  p1 <- plot(sp_summary, type = "line")
-  expect_s3_class(p1, "ggplot")
+
+#test wrong type of input
+test_that("plot_posterior_causal_contrast_static wrong type of input", {
+  expect_error(plot_posterior_causal_contrast_static(gcomp, s_vec = -3), "s_vec must be a vector of positive integers")
+  expect_error(plot_posterior_causal_contrast_static(gcomp, theme_fn = "a"), "theme_fn must be a ggplot2 theme function")
+  expect_error(plot_posterior_causal_contrast_static(gcomp, point_size = -1), "point_size must be a single positive number")
+  expect_error(plot_posterior_causal_contrast_static(gcomp, error_width = 2), "error_width must be a single number in \\(0, 1\\]")
+  expect_error(plot_posterior_causal_contrast_static(gcomp, ref_line = "a"), "ref_line must be NULL or a single number")
 })
 
 
-test_that("switching_probability_summary with wrong df", {
-  expect_error(switching_probability_summary(fit, scale = "mass"), "Data must contain an ID column pat_id/id and a treatment column A/Ak.")
-})
-
-test_that("switching_probability_summary with wrong scale", {
-  expect_error(switching_probability_summary(fit$data_preprocessed, scale = "wrong"), "`scale` must be one of 'mass' or 'hazard'.")
-})

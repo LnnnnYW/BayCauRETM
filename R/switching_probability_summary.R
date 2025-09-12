@@ -51,7 +51,7 @@
 #' sw <- switching_probability_summary(fit$data_preprocessed)
 #' plot(sw, type = "boxplot")
 #'
-#' # conditional hazard view
+#' # conditional hazard viewz
 #' sw_h <- switching_probability_summary(fit$data_preprocessed, scale = "hazard")
 #' plot(sw_h, type = "line")
 #' }
@@ -184,9 +184,9 @@ switching_probability_summary <- function(df, covariates = NULL,
     dplyr::group_by(.data[[time_col]]) |>
     dplyr::summarise(
       n_at_risk = sum(at_risk),
-      mean   = sum(switch_prob, na.rm = TRUE) / N,   # 总体质量 P(W=k)
+      mean   = sum(switch_prob, na.rm = TRUE) / n(),   # 总体质量 P(W=k)
       sd_    = stats::sd(switch_prob, na.rm = TRUE),     # 以“全体”为样本
-      se     = sd_ / sqrt(N),
+      se     = sd_ / sqrt(n()),
       lo95   = pmax(0, mean - 1.96 * se),
       hi95   = pmin(1, mean + 1.96 * se),
       p25    = stats::quantile(switch_prob, 0.25, na.rm = TRUE),
@@ -246,21 +246,6 @@ plot.switching_summary <- function(x, type = c("boxplot","line"), ...) {
 
   by_k   <- x$by_k
   d_plot <- x$df_haz
-
-  #create a data.frame with N * max_time rows, colunmns: id_col, time_col, switch_prob,
-  #enter value from d_plot, fill missing with 0
-  # figure out max_time
-  max_time <- max(d_plot[[x$time_col]], na.rm = TRUE)
-  id <- unique(d_plot[[x$id_col]])
-  full_grid <- expand.grid(
-    id = id,
-    k_idx = seq_len(max_time)
-  )
-  names(full_grid)[1] <- x$id_col
-  d_plot <- merge(full_grid, d_plot[, c(x$id_col, x$time_col, "switch_prob")],
-                  by = c(x$id_col, x$time_col), all.x = TRUE)
-  d_plot$switch_prob[is.na(d_plot$switch_prob)] <- 0
-
 
   if (type == "boxplot") {
     p <- ggplot2::ggplot() +

@@ -96,7 +96,7 @@ selected quantiles of \code{switch_prob} for descriptive dispersion.
 sw <- switching_probability_summary(fit$data_preprocessed)
 plot(sw, type = "boxplot")
 
-# conditional hazard view
+# conditional hazard viewz
 sw_h <- switching_probability_summary(fit$data_preprocessed, scale = "hazard")
 plot(sw_h, type = "line")
 }
