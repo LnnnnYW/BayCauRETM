@@ -78,7 +78,7 @@ test_that("plot_posterior_causal_contrast_interactive wrong type of input", {
                "error_width must be a single number in \\(0, 1\\]")
   expect_error(plot_posterior_causal_contrast_interactive(gcomp, ref_line = "a", interactive = TRUE),
                "ref_line must be NULL or a single number")
-  expect_error(plot_posterior_causal_contrast_interactive(gcomp, interactive = "a", interactive = TRUE),
+  expect_error(plot_posterior_causal_contrast_interactive(gcomp, interactive = "a"),
                "interactive must be a single logical value")
   expect_error(plot_posterior_causal_contrast_interactive(gcomp, save_file = 1, interactive = TRUE),
                "save_file must be NULL or a character string")
