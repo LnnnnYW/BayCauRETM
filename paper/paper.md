@@ -52,22 +52,35 @@ The required `data.frame` variables are: a subject identifier, an interval index
 
 At each row, the `data.frame` should have a monotone binary indicator of death at the start of interval $k$, which we denote with $T_k$. It should also include a binary monotone indicator of whether treatment has been initiated by the end of interval $k$, $A_k$. Finally, it should contain, at each row, the count of the number of events in that interval, $Y_k$, as well as a copy of a set of baseline (i.e. time-constant) covariates, which we denote by $L\in\mathcal{L}$.
 
-Let $a(s)=(\underbrace{0,\dots,0}_{s-1},1,\dots,1)$ define a hypothetical strategy in which we intervene to initiate treatment for everyone in the target population at interval $s\in\{1,2,\dots, K+1\}$. We define potential outcomes $T_k^{a(s)}$ and $Y_k^{a(s)}$ which represent whether a patient would have been dead in interval $k$ and the number of events they would have experienced in interval $k$, respectively, had they - possibly counter to the fact - initiated treatment at interval $s$. This package provides inference for the the difference in average potential incidence rates over the follow-up window under two different initiation strategies $$
+Let $a(s)=(\underbrace{0,\dots,0}_{s-1},1,\dots,1)$ define a hypothetical strategy in which we intervene to initiate treatment for everyone in the target population at interval $s\in\{1,2,\dots, K+1\}$. We define potential outcomes $T_k^{a(s)}$ and $Y_k^{a(s)}$ which represent whether a patient would have been dead in interval $k$ and the number of events they would have experienced in interval $k$, respectively, had they - possibly counter to the fact - initiated treatment at interval $s$. This package provides inference for the the difference in average potential incidence rates over the follow-up window under two different initiation strategies:
+
+$$
 \Delta(s,s') =
 \mathbb{E}\!\left[\frac{\sum_{k=1}^K Y_k^{a(s)}}{K-\sum_{k=1}^K T_k^{a(s)}}\right]
 -
-\mathbb{E}\!\left[\frac{\sum_{k=1}^K Y_k^{a^{(s')}}}{K-\sum_{k=1}^K T_k^{a^{(s')}}}\right],
+\mathbb{E}\!\left[\frac{\sum_{k=1}^K Y_k^{a^{(s')}}}{K-\sum_{k=1}^K T_k^{a^{(s')}}}\right]
 $$
 
-The package runs a pair of discrete-time models conditional on shared treatment and covariate terms:\
-1. A discrete-time hazard model for the terminal event (e.g. death) that models death at a given interval conditional on survival up to that interval:\
-$$\lambda_k(a_k,\bar y_{k-1},l)=\Pr\!\big(T_k=1\mid T_{k-1}=0,\,a_k,\bar y_{k-1}, l \big)$$ 2. A distribution for the number of event occurrences in a given interval conditional on survival through that interval:\
-$$ f(y_k\mid a_k,\bar y_{k-1},l)=\Pr\!\big(Y_k=y_k\mid T_k=0,\,a_k,\bar y_{k-1},l\big) $$ Here, $f(y_k\mid a_k,\bar y_{k-1},\ell)$ represents the Poisson probability mass function with conditional mean/intensity of the event-count $\mu_k(a_k, \bar y_{k-1}, l) = E[Y_k\mid A_k,\bar Y_{k-1},L]$. Together, these two models multiply to form a joint model for the terminal and recurrent event occurrence at a given interval.
+The package runs a pair of discrete-time models conditional on shared treatment and covariate terms:
 
-The functions in `BayCauRETM` implement the following models for the hazard and intensity, respectively, $$
+1. A discrete-time hazard model for the terminal event (e.g. death) that models death at a given interval conditional on survival up to that interval:
+
+$$\lambda_k(a_k,\bar y_{k-1},l)=\Pr\!\big(T_k=1\mid T_{k-1}=0,\,a_k,\bar y_{k-1}, l \big)$$
+
+2. A distribution for the number of event occurrences in a given interval conditional on survival through that interval:
+
+$$ f(y_k\mid a_k,\bar y_{k-1},l)=\Pr\!\big(Y_k=y_k\mid T_k=0,\,a_k,\bar y_{k-1},l\big) $$
+
+Here, $f(y_k\mid a_k,\bar y_{k-1},\ell)$ represents the Poisson probability mass function with conditional mean/intensity of the event-count $\mu_k(a_k, \bar y_{k-1}, l) = E[Y_k\mid A_k,\bar Y_{k-1},L]$. Together, these two models multiply to form a joint model for the terminal and recurrent event occurrence at a given interval.
+
+The functions in `BayCauRETM` implement the following models for the hazard and intensity, respectively:
+
+$$
 \text{logit}\,\lambda_k(a_k,\bar y_{k-1},l)=\beta_{0k}+l^\top\beta_L+y_{k-1}\beta_Y+\beta_A a_k,\qquad
 \log \mu_k(a_k, \bar y_{k-1}, l)=\theta_{0k}+l^\top\theta_L+y_{k-1}\theta_Y+\theta_A a_k,
-$$ The time-varying intercepts $\{\beta_{0k}\}$ and $\{\theta_{0k}\}$ parameterize the baseline hazard and event intensity, respectively. They are assigned a first-order autoregressive (AR1) smoothing prior to improve stability as at-risk counts diminish in later intervals. See @Oganisian2024 for more details.
+$$
+
+The time-varying intercepts $\{\beta_{0k}\}$ and $\{\theta_{0k}\}$ parameterize the baseline hazard and event intensity, respectively. They are assigned a first-order autoregressive (AR1) smoothing prior to improve stability as at-risk counts diminish in later intervals. See @Oganisian2024 for more details.
 
 ### Posterior inference and g-computation
 
