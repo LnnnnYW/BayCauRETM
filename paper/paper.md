@@ -62,7 +62,7 @@ The package runs a pair of discrete-time models conditional on shared treatment 
 
 1.  A discrete-time hazard model for the terminal event (e.g. death) that models death at a given interval conditional on survival up to that interval:
 
-$$\lambda_k(a_k,\bar y_{k-1},l)=\Pr\!\big(T_k=1\mid T_{k-1}=0,\,a_k,\bar y_{k-1}, l \big)$$
+$$\lambda_k(a_k,\bar y_{k-1},l)=\Pr\!\big(T_k=1\mid T_{k-1}=0,\,a_k,\bar y_{k-1}, l \big)$$ 
 
 2.  A distribution for the number of event occurrences in a given interval conditional on survival through that interval:
 
