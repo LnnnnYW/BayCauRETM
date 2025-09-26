@@ -55,9 +55,8 @@ At each row, the `data.frame` should have a monotone binary indicator of death a
 Let $a(s)=(\underbrace{0,\dots,0}_{s-1},1,\dots,1)$ define a hypothetical strategy in which we intervene to initiate treatment for everyone in the target population at interval $s\in\{1,2,\dots, K+1\}$. We define potential outcomes $T_k^{a(s)}$ and $Y_k^{a(s)}$ which represent whether a patient would have been dead in interval $k$ and the number of events they would have experienced in interval $k$, respectively, had they - possibly counter to the fact - initiated treatment at interval $s$. This package provides inference for the the difference in average potential incidence rates over the follow-up window under two different initiation strategies:
 
 $$
-\Delta(s,s') =
-\mathbb{E}\!\left[\frac{\sum_{k=1}^K Y_k^{a(s)}}{K-\sum_{k=1}^K T_k^{a(s)}}\right]
-- \mathbb{E}\!\left[\frac{\sum_{k=1}^K Y_k^{a^{(s')}}}{K-\sum_{k=1}^K T_k^{a^{(s')}}}\right]
+\Delta(s,s')=\mathbb{E}\left[\frac{\sum_{k=1}^K Y_k^{a(s)}}{K-\sum_{k=1}^K T_k^{a(s)}}\right]
+-\mathbb{E}\left[\frac{\sum_{k=1}^K Y_k^{a^{(s')}}}{K-\sum_{k=1}^K T_k^{a^{(s')}}}\right]
 $$
 
 The package runs a pair of discrete-time models conditional on shared treatment and covariate terms:
