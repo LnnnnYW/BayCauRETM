@@ -38,7 +38,7 @@ Intended users include statisticians, epidemiologists, and health-services resea
 
 Standard software implementing methods for time-to-event and recurrent event data remain valuable for descriptive purposes, but generally do not target causal estimands while dealing with complexities 1-4 described in the Summary section above [@ghoshlin2002; @schaubel2010; @janvin2024]. @Oganisian2024 developed Bayesian statistical methods that accommodate these complexities and conducted a thorough simulation-based validation of these methods. However, due to the focus on methodological development and validation, only proof-of-concept replication code was provided along with the paper. There is need for user-friendly, off-the-shelf software with readable help files that can implement the methods developed in @Oganisian2024.`BayCauRETM` fills this methodological and practical gap by operationalizing the Bayesian approach of @Oganisian2024 in `R`. `BayCauRETM` is designed to have a syntax familiar to base `R` users and which mirror more standard regression functions like `lm()` and `glm`. It comes complete with extensive help files accessed via the `?` command in `R`. Thus, `BayCauRETM` provides the first user-friendly software for analyzing complex recurrent event data in the face of complexities 1)-4) described in the Summary section above.
 
-# Data structure, model, and outputs
+# Data structure, model, and outputs 
 
 In this section, we provide an overview of the expected input data structure, models that are run under-the-hood, and expected outputs. We refer readers to @Oganisian2024 for methodological details.
 
