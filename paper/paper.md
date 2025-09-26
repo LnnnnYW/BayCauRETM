@@ -48,7 +48,7 @@ The package expects longitudinal data that is arranged in an `R` `data.frame` ob
 
 The required `data.frame` variables are: a subject identifier, an interval index representing $k$, the treatment indicator (0 until the interval in which treatment is initiated, then 1 thereafter), the interval-specific count of recurrent events, a terminal-event indicator (0 up to death and 1 from the first interval after death). Optional fields include baseline covariates, lagged history (e.g., a one-interval lag of the event count). This structure aligns event attribution and at-risk time with treatment history, and it mirrors typical data-collection schemes used in observational data sets like medical insurance claims and or electronic health records (EHR) sources.
 
-### Model specification 
+### Model specification
 
 At each row, the `data.frame` should have a monotone binary indicator of death at the start of interval $k$, which we denote with $T_k$. It should also include a binary monotone indicator of whether treatment has been initiated by the end of interval $k$, $A_k$. Finally, it should contain, at each row, the count of the number of events in that interval, $Y_k$, as well as a copy of a set of baseline (i.e. time-constant) covariates, which we denote by $L\in\mathcal{L}$.
 
@@ -57,17 +57,16 @@ Let $a(s)=(\underbrace{0,\dots,0}_{s-1},1,\dots,1)$ define a hypothetical strate
 $$
 \Delta(s,s') =
 \mathbb{E}\!\left[\frac{\sum_{k=1}^K Y_k^{a(s)}}{K-\sum_{k=1}^K T_k^{a(s)}}\right]
--
-\mathbb{E}\!\left[\frac{\sum_{k=1}^K Y_k^{a^{(s')}}}{K-\sum_{k=1}^K T_k^{a^{(s')}}}\right]
+- \mathbb{E}\!\left[\frac{\sum_{k=1}^K Y_k^{a^{(s')}}}{K-\sum_{k=1}^K T_k^{a^{(s')}}}\right]
 $$
 
 The package runs a pair of discrete-time models conditional on shared treatment and covariate terms:
 
-1. A discrete-time hazard model for the terminal event (e.g. death) that models death at a given interval conditional on survival up to that interval:
+1.  A discrete-time hazard model for the terminal event (e.g. death) that models death at a given interval conditional on survival up to that interval:
 
 $$\lambda_k(a_k,\bar y_{k-1},l)=\Pr\!\big(T_k=1\mid T_{k-1}=0,\,a_k,\bar y_{k-1}, l \big)$$
 
-2. A distribution for the number of event occurrences in a given interval conditional on survival through that interval:
+2.  A distribution for the number of event occurrences in a given interval conditional on survival through that interval:
 
 $$ f(y_k\mid a_k,\bar y_{k-1},l)=\Pr\!\big(Y_k=y_k\mid T_k=0,\,a_k,\bar y_{k-1},l\big) $$
 
