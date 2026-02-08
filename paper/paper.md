@@ -28,7 +28,7 @@ affiliations:
 
 # Summary
 
-Observational studies are often conducted to estimate the causal effect of medical treatments on the average rate of a recurrent event outcome within a specific follow-up window in a defined target population. Recurrent events ( e.g. hospitalizations, relapses, and infections) may occur multiple times during follow-up. Causal estimation is challenging with such outcomes because: 1) Recurrent events are typically jointly observed with a terminal event (e.g., death), which precludes future recurrences. 2) Both event count process and the terminal process are unobserved after possible dropout - leading to right censored total event counts and survival time. 3) Patients may initiate the treatment of interest at different times, yielding as many strategies as possible initiation times. Finally, 4) patients are not assigned to treatment strategies randomly, so formal causal methods are required to adjust for observed confounders - i.e. drivers of both treatment patterns and either the recurrent event or death processes.
+Observational studies are often conducted to estimate the causal effect of medical treatments on the average rate of a recurrent event outcome within a specific follow-up window in a defined target population. Recurrent events (e.g., hospitalizations, relapses, and infections) may occur multiple times during follow-up. Causal estimation is challenging with such outcomes because: 1) Recurrent events are typically jointly observed with a terminal event (e.g., death), which precludes future recurrences. 2) Both the event count process and the terminal process are unobserved after possible dropout - leading to right censored total event counts and survival time. 3) Patients may initiate the treatment of interest at different times, yielding as many strategies as possible initiation times. Finally, 4) patients are not assigned to treatment strategies randomly, so formal causal methods are required to adjust for observed confounders - i.e., drivers of both treatment patterns and either the recurrent event or death processes.
 
 This paper presents `BayCauRETM`, an `R` package for Bayesian estimation of causal effects of different treatment initiation strategies on a recurrent event outcome in the presence of death and censoring. It does so by implementing the methodology developed by  @Oganisian2024 which uses Bayesian statistical methods within the potential outcomes causal inference framework. Users specify an initiation time and supply a `data.frame` containing confounders and columns for censoring, death, and interval-specific recurrent counts, then define terminal and recurrent models via standard `R` formula syntax. Given these inputs, `BayCauRETM` performs causal adjustment and outputs adjusted expected event rates over follow-up under the specified initiation time. The package also provides diagnostic and visualization utilities.
 
@@ -68,10 +68,7 @@ $$
 
 ### Model specification
 
-The package runs a pair of discrete-time models conditional on shared treatment and covariate terms.
-
-Here and throughout, we use overbar notation to denote the full history of the recurrent event process up to the previous interval, i.e.,
-$\bar Y_{k-1} = (Y_1, Y_2, \dots, Y_{k-1})$.
+The package runs a pair of discrete-time models conditional on shared treatment and covariate terms:
 
 1. Discrete-time hazard model for the terminal event that models death at a given interval conditional on survival up to that interval:
 $$
@@ -90,6 +87,8 @@ $$
 Here, $f(y_k \mid a_k,\bar Y_{k-1},l)$ denotes the Poisson probability mass function with conditional mean (intensity)
 $\mu_k(a_k, \bar Y_{k-1}, l) = \mathbb{E}[Y_k \mid A_k, \bar Y_{k-1}, L]$.
 Together, these two models multiply to form a joint model for the terminal and recurrent event occurrence at a given interval.
+Here and throughout, we use overbar notation to denote the full history of the recurrent event process up to the previous interval, i.e.,
+$\bar Y_{k-1} = (Y_1, Y_2, \dots, Y_{k-1})$.
 
 The functions in `BayCauRETM` implement the following models for the hazard and intensity, respectively:
 $$
@@ -151,7 +150,8 @@ df_fit <- df %>%
   arrange(id, k) %>%
   mutate(k_fac = as.integer(factor(k, levels = sort(unique(k))))) %>%
   group_by(id) %>%
-  mutate(lagYk = if ("lagYk" %in% names(.)) replace_na(lagYk, 0) else lag(Yk, default = 0)) %>%
+  mutate(lagYk = if ("lagYk" %in% names(.)) replace_na(lagYk, 0) 
+                 else lag(Yk, default = 0)) %>%
   ungroup() %>%
   drop_na(Tk, Yk, Ak, L.1, L.2) %>%
   mutate(
