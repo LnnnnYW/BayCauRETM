@@ -121,8 +121,8 @@ result_summary_table <- function(fit_out,
       data.frame(
         s        = suppressWarnings(as.integer(sub("^s=", "", nm))),
         Mean     = as.numeric(x$mean),
-        `2.5%`   = as.numeric(x$CI_lower),
-        `97.5%`  = as.numeric(x$CI_upper),
+        Lower    = as.numeric(x$CI_lower),
+        Upper    = as.numeric(x$CI_upper),
         CI_width = as.numeric(x$CI_upper - x$CI_lower),
         stringsAsFactors = FALSE
       )
@@ -132,8 +132,8 @@ result_summary_table <- function(fit_out,
     df_delta <- data.frame(
       s        = integer(0),
       Mean     = numeric(0),
-      `2.5%`   = numeric(0),
-      `97.5%`  = numeric(0),
+      Lower    = numeric(0),
+      Upper    = numeric(0),
       CI_width = numeric(0),
       stringsAsFactors = FALSE
     )

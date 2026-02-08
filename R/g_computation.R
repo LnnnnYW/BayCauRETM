@@ -19,6 +19,7 @@
 #' @param cores Integer scalar. The number of CPU workers used for the g-computation
 #'   simulations, default is 1. If greater than 1, posterior simulations are
 #'   evaluated in parallel via `parallel::parLapply()`.
+#' @param ci Numeric vector of length 2. Credible interval bounds (default `c(0.025, 0.975)`).
 #'
 #' @details
 #' For each posterior draw m, the algorithm samples Dirichlet weights over
@@ -27,7 +28,8 @@
 #' as the sum of recurrent counts divided by the number of intervals at risk.
 #' Rates are averaged across subjects with the Dirichlet weights to obtain
 #' `R(s)`. Contrasts `Delta(s)` are formed against never treat (s = K + 1).
-#' Credible intervals are the 2.5% and 97.5% quantiles of the posterior draws.
+#' Credible intervals are the 2.5% and 97.5% quantiles of the posterior draws
+#' by default.
 #'
 #' @examples
 #' \donttest{
@@ -50,6 +52,7 @@ g_computation <- function(Lmat = NULL,
                           fit_out,
                           s_vec,
                           B     = 50,
+                          ci = c(0.025, 0.975),
                           cores = 1) {
 
   if (!inherits(fit_out$stan_fit, "stanfit"))
@@ -64,6 +67,12 @@ g_computation <- function(Lmat = NULL,
     stop("B must be a single positive integer")
   if (!is.numeric(cores) || length(cores) != 1 || cores < 1 || cores != floor(cores))
     stop("cores must be a single positive integer")
+  if (!is.numeric(ci) || length(ci) != 2 || anyNA(ci)) {
+    stop("'ci' must be a numeric length-2 vector, e.g. c(0.025, 0.975).")
+  }
+  if (any(ci <= 0) || any(ci >= 1) || ci[1] >= ci[2]) {
+    stop("'ci' must be within (0,1) and satisfy ci[1] < ci[2].")
+  }
 
   `%||%` <- function(x, y) if (is.null(x)) y else x
 
@@ -317,7 +326,7 @@ g_computation <- function(Lmat = NULL,
   ref_col <- ncol(R_draws)
   delta <- lapply(seq_along(s_vec), function(j) {
     d  <- R_draws[, j] - R_draws[, ref_col]
-    qs <- stats::quantile(d, c(.025, .975), na.rm = TRUE)
+    qs <- stats::quantile(d, ci, na.rm = TRUE)
     list(draws = d,
          mean     = mean(d, na.rm = TRUE),
          CI_lower = qs[1],
@@ -351,8 +360,8 @@ print.gcomp_out <- function(x, ...) {
     data.frame(
       s      = as.integer(sub("^s=", "", nm)),
       Mean   = xi$mean,
-      `2.5%` = xi$CI_lower,
-      `97.5%` = xi$CI_upper,
+      Lower = xi$CI_lower,
+      Upper = xi$CI_upper,
       row.names = NULL,
       stringsAsFactors = FALSE
     )

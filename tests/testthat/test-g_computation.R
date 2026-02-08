@@ -104,3 +104,65 @@ test_that("g_computation wrong type of input", {
                              cores   = c(1,2)), "cores must be a single positive integer")
 })
 
+#test ci
+test_that("g_computation: ci validation works", {
+  gcomp <- g_computation(fit_out = fit, s_vec = s_vec, B = B, cores = cores,
+                         ci = c(0.025, 0.975))
+  expect_type(gcomp, "list")
+  expect_true(all(c("mean", "CI_lower", "CI_upper") %in% names(gcomp$delta[[1]])))
+
+  # Not numeric
+  expect_error(
+    g_computation(fit_out = fit, s_vec = s_vec, B = B, cores = cores,
+                  ci = c("0.025", "0.975")),
+    "'ci' must be a numeric length-2 vector"
+  )
+
+  # Wrong length
+  expect_error(
+    g_computation(fit_out = fit, s_vec = s_vec, B = B, cores = cores,
+                  ci = 0.95),
+    "'ci' must be a numeric length-2 vector"
+  )
+  expect_error(
+    g_computation(fit_out = fit, s_vec = s_vec, B = B, cores = cores,
+                  ci = c(0.025, 0.5, 0.975)),
+    "'ci' must be a numeric length-2 vector"
+  )
+
+  # NA present
+  expect_error(
+    g_computation(fit_out = fit, s_vec = s_vec, B = B, cores = cores,
+                  ci = c(NA_real_, 0.975)),
+    "'ci' must be a numeric length-2 vector"
+  )
+
+  # Out of (0,1)
+  expect_error(
+    g_computation(fit_out = fit, s_vec = s_vec, B = B, cores = cores,
+                  ci = c(0, 0.975)),
+    "'ci' must be within \\(0,1\\)"
+  )
+  expect_error(
+    g_computation(fit_out = fit, s_vec = s_vec, B = B, cores = cores,
+                  ci = c(0.025, 1)),
+    "'ci' must be within \\(0,1\\)"
+  )
+  expect_error(
+    g_computation(fit_out = fit, s_vec = s_vec, B = B, cores = cores,
+                  ci = c(-1, 0.975)),
+    "'ci' must be within \\(0,1\\)"
+  )
+
+  # Bad order / equal
+  expect_error(
+    g_computation(fit_out = fit, s_vec = s_vec, B = B, cores = cores,
+                  ci = c(0.975, 0.025)),
+    "ci\\[1\\] < ci\\[2\\]"
+  )
+  expect_error(
+    g_computation(fit_out = fit, s_vec = s_vec, B = B, cores = cores,
+                  ci = c(0.5, 0.5)),
+    "ci\\[1\\] < ci\\[2\\]"
+  )
+})
