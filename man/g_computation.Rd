@@ -4,7 +4,14 @@
 \alias{g_computation}
 \title{Bayesian g-computation for recurrent-event rate contrasts}
 \usage{
-g_computation(Lmat = NULL, fit_out, s_vec, B = 50, cores = 1)
+g_computation(
+  Lmat = NULL,
+  fit_out,
+  s_vec,
+  B = 50,
+  ci = c(0.025, 0.975),
+  cores = 1
+)
 }
 \arguments{
 \item{Lmat}{A numeric matrix of size (n_pat*P), where n_pat is the number of subjects
@@ -18,6 +25,8 @@ excluding any lag terms.}
 in 1..K).}
 
 \item{B}{Integer. Number of Monte Carlo replicates per posterior draw (default 50).}
+
+\item{ci}{Numeric vector of length 2. Credible interval bounds (default \code{c(0.025, 0.975)}).}
 
 \item{cores}{Integer scalar. The number of CPU workers used for the g-computation
 simulations, default is 1. If greater than 1, posterior simulations are
@@ -38,7 +47,8 @@ switching rule A_k = 1(k >= s), and computes a subject-specific average rate
 as the sum of recurrent counts divided by the number of intervals at risk.
 Rates are averaged across subjects with the Dirichlet weights to obtain
 \code{R(s)}. Contrasts \code{Delta(s)} are formed against never treat (s = K + 1).
-Credible intervals are the 2.5\% and 97.5\% quantiles of the posterior draws.
+Credible intervals are the 2.5\% and 97.5\% quantiles of the posterior draws
+by default.
 }
 \examples{
 \donttest{
