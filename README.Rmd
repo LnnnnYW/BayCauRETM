@@ -106,7 +106,7 @@ gcomp <- g_computation(
   fit_out = fit,
   s_vec   = c(3, 6),   # start at time 3 vs 6
   B       = 20,
-  cores   = 1
+  cores   = 1    c
 )
 
 print(gcomp)
