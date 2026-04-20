@@ -129,7 +129,8 @@ Pull requests are always welcome!
 
 ## Citation
 
-If you use **BayCauRETM**, please cite:
+If you use **BayCauRETM**, please cite our JOSS paper: [![DOI](https://joss.theoj.org/papers/10.21105/joss.09458/status.svg)](https://doi.org/10.21105/joss.09458).
+
 
 ## Community Guidelines
 
